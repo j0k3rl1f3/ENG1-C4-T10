@@ -7,9 +7,12 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import ENG1.Game.Managers.MapFeature;
+import ENG1.Game.Managers.MapManager;
 
+/** An enemy goose that chases the player, or the nearest active food crumb. */
 public class Goose extends Entity{
-    private static final float SPEED = 85f;
+    private static final float SPEED = 45f;
+    private static final float DRAW_SIZE = 64f;
     private static final float ATTACK_COOLDOWN = 1f;
     private static final int DAMAGE = 1;
     private final Texture idleSheet = new Texture(Gdx.files.internal("Goose/Idle.png"));
@@ -24,13 +27,16 @@ public class Goose extends Entity{
     private float animationTime;
     private float flapTime;
     private float attackTimer;
+    private float offCameraTimer;
     private final Vector2 movement = new Vector2();
 
 
+    /** Creates a goose and its collision bounds. */
     public Goose(float x, float y, float width, float height) {
         super(x, y, width, height);
     }
 
+    /** Draws the appropriate idle, running, or attack animation frame. */
     @Override
     public void render(SpriteBatch batch) {
         Animation<TextureRegion> current;
@@ -45,9 +51,10 @@ public class Goose extends Entity{
             animationTime,
             current != flapAnimation
         );
-        batch.draw(frame, position.x, position.y, 64, 64);
+        batch.draw(frame, position.x, position.y, DRAW_SIZE, DRAW_SIZE);
     }
 
+    /** Releases the textures used by this goose's animations. */
     @Override public void dispose() {
         super.dispose();
         idleSheet.dispose();
@@ -55,45 +62,76 @@ public class Goose extends Entity{
         flapSheet.dispose();
     }
 
+    /** Updates a goose with no food crumbs or world collision data. */
     public void update(float delta, Player player) {
         update(delta, player, null, null, null);
     }
 
-    public void update(float delta, Player player, Food bait) {
-        update(delta, player, bait, null, null);
+    /**
+     * Moves and attacks the player, unless a nearby food crumb takes priority.
+     *
+     * @param delta elapsed time in seconds
+     * @param player player to chase and attack
+     * @param crumbs active distractions in the world
+     * @param geese all geese, used to prevent overlap
+     * @param mapFeatures solid world features which block movement
+     */
+    public void update(float delta, Player player, Array<FoodCrumb> crumbs, Array<Goose> geese,
+                       Array<MapFeature> mapFeatures) {
+        update(delta, player, crumbs, geese, mapFeatures, null);
     }
 
-    public void update(float delta, Player player, Food bait, Array<Goose> geese,
-                       Array<MapFeature> mapFeatures) {
-        animationTime += delta;
+    /**
+     * Moves and attacks while resolving collisions against entities and the Tiled map.
+     *
+     * @param mapManager Tiled map collision queries; water is intentionally passable to geese
+     */
+    public void update(float delta, Player player, Array<FoodCrumb> crumbs, Array<Goose> geese,
+                       Array<MapFeature> mapFeatures, MapManager mapManager) {
         animationTime += delta;
         flapTime = Math.max(0, flapTime - delta);
         if (player == null || !player.isAlive()) return;
 
-        boolean distracted = bait != null && bait.isDistracting();
-        Vector2 target = distracted ? bait.getPosition() : player.position;
+        FoodCrumb crumb = findClosestCrumb(crumbs);
+        boolean distracted = crumb != null;
+        Vector2 target = distracted ? crumb.getPosition() : player.position;
         movement.set(target).sub(position);
         float distance = movement.len();
         boolean touchingPlayer = getBounds().overlaps(player.getBounds());
         if (distance > 1f) {
             movement.scl(Math.min(SPEED * delta, distance) / distance);
-            touchingPlayer |= moveAxis(movement.x, true, player, geese, mapFeatures);
-            touchingPlayer |= moveAxis(movement.y, false, player, geese, mapFeatures);
+            touchingPlayer |= moveAxis(movement.x, true, player, geese, mapFeatures, mapManager);
+            touchingPlayer |= moveAxis(movement.y, false, player, geese, mapFeatures, mapManager);
         }
 
         if (distracted) return;
         attackTimer -= delta;
-        // In the existing attack block:
         if (attackTimer <= 0 && touchingPlayer) {
             player.takeDamage(DAMAGE);
             attackTimer = ATTACK_COOLDOWN;
             flapTime = flapAnimation.getAnimationDuration();
         }
-          flapTime = Math.max(0, flapTime - delta);
+    }
+
+    /** Returns the nearest active crumb so separate geese can choose separate targets. */
+    private FoodCrumb findClosestCrumb(Array<FoodCrumb> crumbs) {
+        if (crumbs == null) return null;
+
+        FoodCrumb closest = null;
+        float closestDistance2 = Float.MAX_VALUE;
+        for (FoodCrumb crumb : crumbs) {
+            if (!crumb.isActive()) continue;
+            float distance2 = position.dst2(crumb.getPosition());
+            if (distance2 < closestDistance2) {
+                closest = crumb;
+                closestDistance2 = distance2;
+            }
+        }
+        return closest;
     }
 
     private boolean moveAxis(float amount, boolean horizontal, Player player, Array<Goose> geese,
-                             Array<MapFeature> mapFeatures) {
+                             Array<MapFeature> mapFeatures, MapManager mapManager) {
         if (amount == 0) return false;
         float previous = horizontal ? position.x : position.y;
         if (horizontal) {
@@ -105,7 +143,8 @@ public class Goose extends Entity{
         }
 
         boolean touchingPlayer = getBounds().overlaps(player.getBounds());
-        if (touchingPlayer || overlapsOtherGoose(geese) || overlapsSolidFeature(mapFeatures)) {
+        if (touchingPlayer || overlapsOtherGoose(geese) || overlapsSolidFeature(mapFeatures)
+            || (mapManager != null && mapManager.checkGooseCollision(getBounds()))) {
             if (horizontal) {
                 position.x = previous;
                 getBounds().setX(position.x);
@@ -132,6 +171,22 @@ public class Goose extends Entity{
             if (feature.blocksGoose() && getBounds().overlaps(feature.getBounds())) return true;
         }
         return false;
+    }
+
+    /**
+     * Tracks continuous time outside the active world camera.
+     *
+     * @param delta elapsed time in seconds
+     * @param cameraBounds visible world-space area
+     * @return true after this goose has remained outside the camera for ten seconds
+     */
+    public boolean hasBeenOffCameraTooLong(float delta, com.badlogic.gdx.math.Rectangle cameraBounds) {
+        if (getBounds().overlaps(cameraBounds)) {
+            offCameraTimer = 0;
+            return false;
+        }
+        offCameraTimer += delta;
+        return offCameraTimer >= 10f;
     }
 
     @Override public void update(float delta) {

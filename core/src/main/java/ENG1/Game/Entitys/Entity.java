@@ -4,24 +4,37 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.MathUtils;
 
+/** Base class for movable objects with a world position, velocity, and collision bounds. */
 public abstract class Entity {
     protected Vector2 position;
     protected Vector2 velocity;
     private final Rectangle bound;
 
+    /**
+     * Creates an entity at the supplied world position.
+     *
+     * @param x left edge of the entity in world units
+     * @param y bottom edge of the entity in world units
+     * @param width collision width in world units
+     * @param height collision height in world units
+     */
     public Entity(float x, float y, float width, float height){
         this.position = new Vector2(x,y);
         this.velocity = new Vector2(0,0);
         this.bound = new Rectangle(x, y, width, height);
     }
 
+    /** Updates this entity for one rendered frame. @param alpha elapsed time in seconds */
     public abstract void update(float alpha);
 
+    /** Draws this entity. @param batch active sprite batch used for rendering */
     public abstract void render(SpriteBatch batch);
+    /** @return the collision rectangle, kept in sync with the entity position */
     public Rectangle getBounds(){
         return bound;
     }
 
+    /** Releases resources owned by this entity. Subclasses override when needed. */
     public void dispose() { }
 
     /** Keeps this entity's collision bounds entirely within the map. */
