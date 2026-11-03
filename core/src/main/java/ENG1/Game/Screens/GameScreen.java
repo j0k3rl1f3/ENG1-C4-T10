@@ -17,7 +17,6 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
-
 import static com.badlogic.gdx.Gdx.files;
 
 public class GameScreen implements Screen {
@@ -25,7 +24,6 @@ public class GameScreen implements Screen {
     private static final float MAP_HEIGHT = 2048f;
     private static final float GOOSE_SPAWN_INTERVAL = 12f;
     private static final int MAX_GEESE = 9;
-
     private Player player;
     private Array<Goose> geese;
     private Array<Food> foodPickups;
@@ -37,7 +35,7 @@ public class GameScreen implements Screen {
     private final BitmapFont font = new BitmapFont();
     private final ScreenViewport uiViewport = new ScreenViewport();
     private final FitViewport viewport = new FitViewport(320, 240, camera);
-    private final Texture backgroundTexture = new Texture(files.internal("largeBackground.png"));
+    private final Texture backgroundTexture = new Texture(files.internal("background.png"));
 
     @Override
     public void show() {
@@ -102,12 +100,10 @@ public class GameScreen implements Screen {
             shapes.rect(bounds.x, bounds.y, bounds.width, bounds.height);
         }
         shapes.end();
-
         batch.begin();
         player.render(batch);
         for (Goose goose : geese) goose.render(batch);
         batch.end();
-
         float healthRatio = (float) player.getHealth() / player.getMaxHealth();
 
         // Draw the HUD in screen coordinates so it stays fixed while the world camera follows the player.
@@ -175,49 +171,7 @@ public class GameScreen implements Screen {
         }
     }
 
-    private float clampCameraPosition(float target, float minimum, float maximum, float mapCenter) {
-        if (minimum > maximum) return mapCenter;
-        return MathUtils.clamp(target, minimum, maximum);
-    }
-
-    private Array<MapFeature> createMapFeatures() {
-        Array<MapFeature> features = new Array<>();
-        // Lakes sit over the pale placeholder areas in the background; positions use bottom-left map coordinates.
-        features.add(new MapFeature(MapFeature.Type.LAKE, 500, 1570, 220, 190));
-        features.add(new MapFeature(MapFeature.Type.LAKE, 300, 620, 180, 150));
-        features.add(new MapFeature(MapFeature.Type.LAKE, 960, 680, 280, 210));
-
-        // Trees and smaller decorations are placed in green areas away from the main paths.
-        features.add(new MapFeature(MapFeature.Type.TREE, 170, 520, 54, 66));
-        features.add(new MapFeature(MapFeature.Type.TREE, 520, 1050, 58, 70));
-        features.add(new MapFeature(MapFeature.Type.TREE, 820, 1750, 56, 68));
-        features.add(new MapFeature(MapFeature.Type.TREE, 1370, 1220, 60, 72));
-        features.add(new MapFeature(MapFeature.Type.TREE, 1680, 430, 56, 68));
-        features.add(new MapFeature(MapFeature.Type.TREE, 1840, 1050, 60, 72));
-        features.add(new MapFeature(MapFeature.Type.ROCK, 350, 1120, 42, 30));
-        features.add(new MapFeature(MapFeature.Type.ROCK, 1480, 1740, 46, 32));
-        features.add(new MapFeature(MapFeature.Type.BUSH, 660, 520, 42, 34));
-        features.add(new MapFeature(MapFeature.Type.BUSH, 1240, 1540, 46, 36));
-        features.add(new MapFeature(MapFeature.Type.FLOWERS, 1600, 1380, 44, 34));
-        features.add(new MapFeature(MapFeature.Type.FLOWERS, 760, 900, 40, 32));
-        return features;
-    }
-
-    private void spawnGeese(float delta) {
-        if (geese.size >= MAX_GEESE) return;
-        for (MapFeature feature : mapFeatures) {
-            if (geese.size >= MAX_GEESE) break;
-            if (feature.updateSpawnTimer(delta, GOOSE_SPAWN_INTERVAL)) {
-                com.badlogic.gdx.math.Rectangle lake = feature.getBounds();
-                float angle = geese.size * 2.39996323f;
-                float spawnRadius = 42f;
-                geese.add(new Goose(lake.x + lake.width / 2f - 16 + MathUtils.cos(angle) * spawnRadius,
-                    lake.y + lake.height / 2f - 16 + MathUtils.sin(angle) * spawnRadius, 32, 32));
-            }
-        }
-    }
-
-    private void renderFeature(MapFeature feature) {
+    public void renderFeature(MapFeature feature) {
         com.badlogic.gdx.math.Rectangle bounds = feature.getBounds();
         switch (feature.getType()) {
             case LAKE:
@@ -254,4 +208,45 @@ public class GameScreen implements Screen {
         }
     }
 
+    private float clampCameraPosition(float target, float minimum, float maximum, float mapCenter) {
+        if (minimum > maximum) return mapCenter;
+        return MathUtils.clamp(target, minimum, maximum);
+    }
+
+    private Array<MapFeature> createMapFeatures() {
+        Array<MapFeature> features = new Array<>();
+        // Lakes sit over the pale placeholder areas in the background, positions use bottom-left map coordinates.
+        features.add(new MapFeature(MapFeature.Type.LAKE, 500, 1570, 220, 190));
+        features.add(new MapFeature(MapFeature.Type.LAKE, 300, 620, 180, 150));
+        features.add(new MapFeature(MapFeature.Type.LAKE, 960, 680, 280, 210));
+
+        // Trees and smaller decorations are placed in green areas away from the main paths.
+        features.add(new MapFeature(MapFeature.Type.TREE, 170, 520, 54, 66));
+        features.add(new MapFeature(MapFeature.Type.TREE, 520, 1050, 58, 70));
+        features.add(new MapFeature(MapFeature.Type.TREE, 820, 1750, 56, 68));
+        features.add(new MapFeature(MapFeature.Type.TREE, 1370, 1220, 60, 72));
+        features.add(new MapFeature(MapFeature.Type.TREE, 1680, 430, 56, 68));
+        features.add(new MapFeature(MapFeature.Type.TREE, 1840, 1050, 60, 72));
+        features.add(new MapFeature(MapFeature.Type.ROCK, 350, 1120, 42, 30));
+        features.add(new MapFeature(MapFeature.Type.ROCK, 1480, 1740, 46, 32));
+        features.add(new MapFeature(MapFeature.Type.BUSH, 660, 520, 42, 34));
+        features.add(new MapFeature(MapFeature.Type.BUSH, 1240, 1540, 46, 36));
+        features.add(new MapFeature(MapFeature.Type.FLOWERS, 1600, 1380, 44, 34));
+        features.add(new MapFeature(MapFeature.Type.FLOWERS, 760, 900, 40, 32));
+        return features;
+    }
+
+    private void spawnGeese(float delta) {
+        if (geese.size >= MAX_GEESE) return;
+        for (MapFeature feature : mapFeatures) {
+            if (geese.size >= MAX_GEESE) break;
+            if (feature.updateSpawnTimer(delta, GOOSE_SPAWN_INTERVAL)) {
+                com.badlogic.gdx.math.Rectangle lake = feature.getBounds();
+                float angle = geese.size * 2.39996323f;
+                float spawnRadius = 42f;
+                geese.add(new Goose(lake.x + lake.width / 2f - 16 + MathUtils.cos(angle) * spawnRadius,
+                    lake.y + lake.height / 2f - 16 + MathUtils.sin(angle) * spawnRadius, 32, 32));
+            }
+        }
+    }
 }

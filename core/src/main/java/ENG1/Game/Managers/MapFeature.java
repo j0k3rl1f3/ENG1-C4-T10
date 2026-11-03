@@ -1,5 +1,5 @@
 package ENG1.Game.Managers;
-
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
 
 /** A map feature with a collision area. Lakes also act as goose spawn points. */
@@ -8,6 +8,7 @@ public class MapFeature {
     private final Type type;
     private final Rectangle bounds;
     private float spawnTimer;
+    private final ShapeRenderer shapes = new ShapeRenderer();
 
     public MapFeature(Type type, float x, float y, float width, float height) {
         this.type = type;
