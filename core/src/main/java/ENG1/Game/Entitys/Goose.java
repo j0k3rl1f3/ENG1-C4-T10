@@ -51,7 +51,7 @@ public class Goose extends Entity{
             animationTime,
             current != flapAnimation
         );
-        batch.draw(frame, position.x, position.y, DRAW_SIZE, DRAW_SIZE);
+        batch.draw(frame, position.x - (0.5f * DRAW_SIZE), position.y  - (0.5f * DRAW_SIZE), DRAW_SIZE, DRAW_SIZE);
     }
 
     /** Releases the textures used by this goose's animations. */

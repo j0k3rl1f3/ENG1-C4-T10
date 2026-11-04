@@ -21,7 +21,9 @@ public class Player extends Entity {
     private boolean hasFoodSprinkler;
     private float foodCooldown;
     private static final float MOVE_SPEED = 75f;
-    private static final float DRAW_SIZE = 48f;
+    private static final float DRAW_SIZE = 64f;
+    private static final float OFFSETX = 32f;
+    private static final float OFFSETY = 32f;
     private enum Direction {DOWN, UP, RIGHT, LEFT}
     private static final float IDLE_FRAME_DURATION = 0.35f;
     private static final float WALK_FRAME_DURATION = 0.12f;
@@ -64,7 +66,7 @@ public class Player extends Entity {
     @Override
     public void render(SpriteBatch batch) {
         TextureRegion frame = getCurrentAnimation().getKeyFrame(animationTime, true);
-        batch.draw(frame, position.x, position.y, DRAW_SIZE, DRAW_SIZE);
+        batch.draw(frame, position.x  - (0.25f * DRAW_SIZE), position.y  - (0.25f * DRAW_SIZE), DRAW_SIZE, DRAW_SIZE);
     }
     @Override
     public void dispose() {

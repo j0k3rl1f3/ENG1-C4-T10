@@ -2,6 +2,7 @@ package ENG1.Game.Managers;
 
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
@@ -13,6 +14,8 @@ import com.badlogic.gdx.math.GridPoint2;
 
 /** Loads, renders, and queries collision data for a tiled map. */
 public class MapManager {
+    // Tiled culls by cell size, while some artwork extends well beyond its 32×32 cell.
+    private static final float RENDER_CULLING_PADDING = 160f;
     private TiledMap map;
     private OrthogonalTiledMapRenderer renderer;
     private Array<Interactable> interactableArray;
@@ -29,9 +32,15 @@ public class MapManager {
         renderer = new OrthogonalTiledMapRenderer(map);
         interactableArray = new Array<>();
     }
-    /** Renders the map from the camera's current viewpoint. @param camera world camera */
+    /** Renders the map with enough culling margin for oversized tree and building artwork. @param camera world camera */
     public void render(OrthographicCamera camera){
-        renderer.setView(camera);
+        float viewWidth = camera.viewportWidth * camera.zoom;
+        float viewHeight = camera.viewportHeight * camera.zoom;
+        renderer.setView(camera.combined,
+            camera.position.x - viewWidth / 2f - RENDER_CULLING_PADDING,
+            camera.position.y - viewHeight / 2f - RENDER_CULLING_PADDING,
+            viewWidth + RENDER_CULLING_PADDING * 2f,
+            viewHeight + RENDER_CULLING_PADDING * 2f);
         renderer.render();
     }
     /** @return world interactables registered with this map */
@@ -135,6 +144,55 @@ public class MapManager {
         return overlapsLayer("Muddy", rect);
     }
 
+    /** Draws red-outline equivalents of every map area that blocks the player. */
+    public void renderCollisionDebug(ShapeRenderer shapes) {
+        renderTileLayerBounds(shapes, "Collisions");
+        renderTileLayerBounds(shapes, "Water");
+        renderVisualLayerBounds(shapes, "Trees", 54f, 64f);
+        renderBuildingCollisionBounds(shapes);
+    }
+
+    private void renderTileLayerBounds(ShapeRenderer shapes, String layerName) {
+        TiledMapTileLayer layer = getTileLayer(layerName);
+        if (layer == null) return;
+        for (int x = 0; x < layer.getWidth(); x++) {
+            for (int y = 0; y < layer.getHeight(); y++) {
+                if (layer.getCell(x, y) != null) {
+                    shapes.rect(x * layer.getTileWidth(), y * layer.getTileHeight(),
+                        layer.getTileWidth(), layer.getTileHeight());
+                }
+            }
+        }
+    }
+
+    private void renderVisualLayerBounds(ShapeRenderer shapes, String layerName, float maxWidth, float maxHeight) {
+        TiledMapTileLayer layer = getTileLayer(layerName);
+        if (layer == null) return;
+        for (int x = 0; x < layer.getWidth(); x++) {
+            for (int y = 0; y < layer.getHeight(); y++) {
+                TiledMapTileLayer.Cell cell = layer.getCell(x, y);
+                if (cell == null) continue;
+                TextureRegion region = cell.getTile().getTextureRegion();
+                shapes.rect(x * layer.getTileWidth(), y * layer.getTileHeight(),
+                    Math.min(region.getRegionWidth(), maxWidth), Math.min(region.getRegionHeight(), maxHeight));
+            }
+        }
+    }
+
+    private void renderBuildingCollisionBounds(ShapeRenderer shapes) {
+        TiledMapTileLayer layer = getTileLayer("Buildings");
+        if (layer == null) return;
+        for (int x = 0; x < layer.getWidth(); x++) {
+            for (int y = 0; y < layer.getHeight(); y++) {
+                TiledMapTileLayer.Cell cell = layer.getCell(x, y);
+                if (cell == null) continue;
+                TextureRegion region = cell.getTile().getTextureRegion();
+                shapes.rect(x * layer.getTileWidth(), y * layer.getTileHeight(), region.getRegionWidth(),
+                    Math.max(1f, region.getRegionHeight() - 80f));
+            }
+        }
+    }
+
     /** Releases renderer and map resources. */
     public void dispose() { renderer.dispose(); map.dispose(); }
 
@@ -180,7 +238,7 @@ public class MapManager {
 
         float tileWidth = layer.getTileWidth();
         float tileHeight = layer.getTileHeight();
-        return new MapFeature(MapFeature.Type.LAKE, minX * tileWidth, minY * tileHeight,
+        return new MapFeature(minX * tileWidth, minY * tileHeight,
             (maxX - minX + 1) * tileWidth, (maxY - minY + 1) * tileHeight);
     }
 

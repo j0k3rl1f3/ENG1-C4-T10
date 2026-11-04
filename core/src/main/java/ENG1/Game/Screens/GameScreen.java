@@ -1,4 +1,5 @@
 package ENG1.Game.Screens;
+import ENG1.Game.Main;
 import ENG1.Game.Entitys.Goose;
 import ENG1.Game.Entitys.FoodCrumb;
 import ENG1.Game.Entitys.FoodPickup;
@@ -18,8 +19,7 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ScreenUtils;
-import com.badlogic.gdx.utils.viewport.FitViewport;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import static com.badlogic.gdx.Gdx.files;
 
 /** Main gameplay screen: updates the world, renders the map, and draws the player HUD. */
@@ -29,8 +29,9 @@ public class GameScreen implements Screen {
     private static final float GOOSE_SPAWN_INTERVAL = 5f;
     private static final float GOOSE_GRACE_PERIOD = 4f;
     private static final float LAKE_ACTIVATION_DISTANCE = 280f;
-    private static final float PATH_WIDTH = 100f;
     private static final int MAX_GEESE = 30;
+    private static final boolean SHOW_COLLISION_DEBUG = false;
+    private final Main game;
     private Player player;
     private Array<Goose> geese;
     private Array<FoodPickup> foodPickups;
@@ -43,13 +44,23 @@ public class GameScreen implements Screen {
     final private OrthographicCamera camera = new OrthographicCamera(320, 240);
     private final ShapeRenderer shapes = new ShapeRenderer();
     private final BitmapFont font = new BitmapFont();
-    private final ScreenViewport uiViewport = new ScreenViewport();
-    private final FitViewport viewport = new FitViewport(320, 240, camera);
+    // Extend rather than letterbox: fullscreen displays gain visible world space without stretching art.
+    private final ExtendViewport uiViewport = new ExtendViewport(640, 480);
+    private final ExtendViewport viewport = new ExtendViewport(320, 240, camera);
     private final Texture inventoryTexture = new Texture(files.internal("original assets/inventory.png"));
+
+    public GameScreen(Main game) {
+        this.game = game;
+    }
 
     @Override
     /** Creates a fresh player, world features, and the starting food pickup. */
     public void show() {
+        // Game#setScreen invokes show again when a paused screen is resumed.
+        // Keep the existing world instead of restarting it.
+        if (player != null) return;
+        // The player artwork is 64×64, but its established 32×32 footprint keeps
+        // map, pickup, and goose collisions aligned with the tile grid.
         player = new Player(100,100, 32,32);
         geese = new com.badlogic.gdx.utils.Array<>();
         gooseGraceTimer = GOOSE_GRACE_PERIOD;
@@ -67,6 +78,11 @@ public class GameScreen implements Screen {
     /** Updates and renders a single gameplay frame. @param delta elapsed time in seconds */
     public void render(float delta) {
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1);
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            game.showPauseMenu(this);
+            return;
+        }
 
         gooseGraceTimer = Math.max(0, gooseGraceTimer - delta);
         player.update(delta, gooseGraceTimer > 0 ? null : geese, mapFeatures, mapManager);
@@ -119,6 +135,7 @@ public class GameScreen implements Screen {
         player.render(batch);
         for (Goose goose : geese) goose.render(batch);
         batch.end();
+        renderCollisionDebug();
         float healthRatio = (float) player.getHealth() / player.getMaxHealth();
 
         // Draw the HUD in screen coordinates so it stays fixed while the world camera follows the player.
@@ -190,6 +207,26 @@ public class GameScreen implements Screen {
         }
     }
 
+    /** Draws the active collision rectangles above the gameplay artwork for alignment checks. */
+    private void renderCollisionDebug() {
+        if (!SHOW_COLLISION_DEBUG) return;
+        shapes.setProjectionMatrix(camera.combined);
+        shapes.begin(ShapeRenderer.ShapeType.Line);
+        shapes.setColor(Color.RED);
+        mapManager.renderCollisionDebug(shapes);
+        Rectangle playerBounds = player.getBounds();
+        shapes.rect(playerBounds.x, playerBounds.y, playerBounds.width, playerBounds.height * 0.5f);
+        for (Goose goose : geese) {
+            Rectangle gooseBounds = goose.getBounds();
+            shapes.rect(gooseBounds.x, gooseBounds.y, gooseBounds.width, gooseBounds.height);
+        }
+        for (FoodPickup food : foodPickups) {
+            Rectangle foodBounds = food.getBounds();
+            shapes.rect(foodBounds.x, foodBounds.y, foodBounds.width, foodBounds.height);
+        }
+        shapes.end();
+    }
+
     /** Creates a small scatter of food in front of the player. */
     private void sprinkleFood() {
         float centreX = player.getX() + player.getFacing().x * 80f;
@@ -200,59 +237,6 @@ public class GameScreen implements Screen {
                 centreY + MathUtils.random(-18f, 18f)
             ));
         }
-    }
-
-    /** Draws the primitive placeholder artwork for one map feature. @param feature feature to draw */
-    public void renderFeature(MapFeature feature) {
-        com.badlogic.gdx.math.Rectangle bounds = feature.getBounds();
-        switch (feature.getType()) {
-            case LAKE:
-                shapes.setColor(Color.BLUE);
-                shapes.ellipse(bounds.x, bounds.y, bounds.width, bounds.height);
-                shapes.setColor(Color.CYAN);
-                shapes.ellipse(bounds.x + bounds.width * 0.12f, bounds.y + bounds.height * 0.12f,
-                    bounds.width * 0.76f, bounds.height * 0.76f);
-                break;
-            case TREE:
-                shapes.setColor(Color.BROWN);
-                shapes.rect(bounds.x + bounds.width * 0.4f, bounds.y, bounds.width * 0.2f, bounds.height * 0.55f);
-                shapes.setColor(Color.FOREST);
-                shapes.circle(bounds.x + bounds.width / 2f, bounds.y + bounds.height * 0.62f, bounds.width * 0.48f);
-                break;
-            case ROCK:
-                shapes.setColor(Color.LIGHT_GRAY);
-                shapes.ellipse(bounds.x, bounds.y, bounds.width, bounds.height);
-                break;
-            case BUSH:
-                shapes.setColor(Color.OLIVE);
-                shapes.ellipse(bounds.x, bounds.y, bounds.width, bounds.height);
-                break;
-            case FLOWERS:
-                shapes.setColor(Color.PINK);
-                shapes.circle(bounds.x + bounds.width * 0.25f, bounds.y + bounds.height * 0.5f, 5);
-                shapes.circle(bounds.x + bounds.width * 0.5f, bounds.y + bounds.height * 0.7f, 5);
-                shapes.circle(bounds.x + bounds.width * 0.75f, bounds.y + bounds.height * 0.4f, 5);
-                shapes.setColor(Color.YELLOW);
-                shapes.circle(bounds.x + bounds.width * 0.25f, bounds.y + bounds.height * 0.5f, 2);
-                shapes.circle(bounds.x + bounds.width * 0.5f, bounds.y + bounds.height * 0.7f, 2);
-                shapes.circle(bounds.x + bounds.width * 0.75f, bounds.y + bounds.height * 0.4f, 2);
-                break;
-        }
-    }
-
-    /** Draws the northbound trail that connects the four increasingly difficult map layers. */
-    private void renderPath() {
-        shapes.setColor(Color.TAN);
-        shapes.rectLine(120, 120, 650, 120, PATH_WIDTH);
-        shapes.rectLine(650, 120, 650, 430, PATH_WIDTH);
-        shapes.rectLine(650, 430, 300, 430, PATH_WIDTH);
-        shapes.rectLine(300, 430, 300, 830, PATH_WIDTH);
-        shapes.rectLine(300, 830, 1100, 830, PATH_WIDTH);
-        shapes.rectLine(1100, 830, 1100, 1250, PATH_WIDTH);
-        shapes.rectLine(1100, 1250, 520, 1250, PATH_WIDTH);
-        shapes.rectLine(520, 1250, 520, 1650, PATH_WIDTH);
-        shapes.rectLine(520, 1650, 1500, 1650, PATH_WIDTH);
-        shapes.rectLine(1500, 1650, 1500, 1930, PATH_WIDTH);
     }
 
     private float clampCameraPosition(float target, float minimum, float maximum, float mapCenter) {
@@ -269,76 +253,6 @@ public class GameScreen implements Screen {
             if (goose.hasBeenOffCameraTooLong(delta, cameraBounds)) {
                 geese.removeIndex(i);
                 goose.dispose();
-            }
-        }
-    }
-
-    private Array<MapFeature> createMapFeatures() {
-        Array<MapFeature> features = new Array<>();
-
-        // Layer 1: starting clearing, with a single lake.
-        addLake(features, 1350, 220, 220, 180);
-        addTreePatch(features, 60, 250, 4, 3);
-        addTreePatch(features, 950, 70, 5, 3);
-
-        // Layer 2: dense woodland, with three lakes and a gate at x = 220–400.
-        addTreeWall(features, 480, 220, 400);
-        addLake(features, 60, 620, 190, 150);
-        addLake(features, 720, 570, 240, 180);
-        addLake(features, 1500, 740, 230, 170);
-        addTreePatch(features, 430, 600, 4, 4);
-        addTreePatch(features, 1120, 510, 5, 3);
-        addTreePatch(features, 1770, 560, 4, 4);
-
-        // Layer 3: marsh maze, with five lakes and a gate at x = 1020–1180.
-        addTreeWall(features, 960, 1020, 1180);
-        addLake(features, 150, 1090, 210, 170);
-        addLake(features, 600, 1080, 230, 180);
-        addLake(features, 1300, 1030, 240, 190);
-        addLake(features, 1530, 1200, 210, 170);
-        addLake(features, 1420, 1320, 200, 150);
-        addTreePatch(features, 250, 1010, 3, 4);
-        addTreePatch(features, 880, 1360, 4, 3);
-        addTreePatch(features, 1770, 1040, 4, 5);
-
-        // Layer 4: flooded forest, with seven lakes and the final gate at x = 440–620.
-        addTreeWall(features, 1440, 440, 620);
-        addLake(features, 110, 1550, 200, 160);
-        addLake(features, 820, 1730, 220, 180);
-        addLake(features, 1150, 1780, 210, 160);
-        addLake(features, 1700, 1550, 230, 180);
-        addLake(features, 700, 1810, 220, 150);
-        addLake(features, 1000, 1900, 220, 120);
-        addLake(features, 1700, 1870, 200, 140);
-        addTreePatch(features, 330, 1510, 2, 4);
-        addTreePatch(features, 430, 1770, 4, 3);
-        addTreePatch(features, 70, 1740, 4, 3);
-        addTreePatch(features, 580, 1970, 4, 1);
-        return features;
-    }
-
-    /** Adds a lake, which blocks the player, permits goose movement, and can spawn geese. */
-    private void addLake(Array<MapFeature> features, float x, float y, float width, float height) {
-        features.add(new MapFeature(MapFeature.Type.LAKE, x, y, width, height));
-    }
-
-    /** Adds a solid horizontal tree wall but leaves the supplied range open as a path gate. */
-    private void addTreeWall(Array<MapFeature> features, float y, float gateStart, float gateEnd) {
-        final float treeWidth = 54f;
-        for (float x = 0; x < MAP_WIDTH; x += treeWidth) {
-            if (x + treeWidth <= gateStart || x >= gateEnd) {
-                features.add(new MapFeature(MapFeature.Type.TREE, x, y - 34, treeWidth, 68));
-            }
-        }
-    }
-    /** Adds a dense rectangular cluster of individual blocking trees. */
-    private void addTreePatch(Array<MapFeature> features, float x, float y, int columns, int rows) {
-        final float treeWidth = 54f;
-        final float treeHeight = 68f;
-        for (int column = 0; column < columns; column++) {
-            for (int row = 0; row < rows; row++) {
-                features.add(new MapFeature(MapFeature.Type.TREE,
-                    x + column * treeWidth, y + row * treeHeight, treeWidth, treeHeight));
             }
         }
     }
