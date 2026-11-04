@@ -2,7 +2,7 @@ package ENG1.Game.Screens;
 import ENG1.Game.Main;
 import ENG1.Game.Entitys.Goose;
 import ENG1.Game.Entitys.FoodCrumb;
-import ENG1.Game.Entitys.FoodPickup;
+import ENG1.Game.Entitys.Pickup;
 import ENG1.Game.Entitys.Player;
 import ENG1.Game.Managers.MapFeature;
 import ENG1.Game.Managers.MapManager;
@@ -29,12 +29,12 @@ public class GameScreen implements Screen {
     private static final float GOOSE_SPAWN_INTERVAL = 5f;
     private static final float GOOSE_GRACE_PERIOD = 4f;
     private static final float LAKE_ACTIVATION_DISTANCE = 280f;
-    private static final int MAX_GEESE = 30;
+    private static final int MAX_GEESE = 50;
     private static final boolean SHOW_COLLISION_DEBUG = false;
     private final Main game;
     private Player player;
     private Array<Goose> geese;
-    private Array<FoodPickup> foodPickups;
+    private Array<Pickup> Pickups;
     private Array<MapFeature> mapFeatures;
     private MapManager mapManager;
     private final Array<FoodCrumb> foodCrumbs = new Array<>();
@@ -56,7 +56,7 @@ public class GameScreen implements Screen {
     @Override
     /** Creates a fresh player, world features, and the starting food pickup. */
     public void show() {
-        // Game#setScreen invokes show again when a paused screen is resumed.
+        // Game setScreen invokes show again when a paused screen is resumed.
         // Keep the existing world instead of restarting it.
         if (player != null) return;
         // The player artwork is 64×64, but its established 32×32 footprint keeps
@@ -67,8 +67,7 @@ public class GameScreen implements Screen {
         foodCrumbs.clear();
         mapManager = new MapManager("Map/GooseMap.tmx");
         mapFeatures = mapManager.getWaterRegions();
-        foodPickups = new Array<>();
-        foodPickups.add(new FoodPickup(70, 170));
+        Pickups = new Array<>();
         camera.position.set(320, 240, 0);
         camera.update();
         viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
@@ -87,7 +86,6 @@ public class GameScreen implements Screen {
         gooseGraceTimer = Math.max(0, gooseGraceTimer - delta);
         player.update(delta, gooseGraceTimer > 0 ? null : geese, mapFeatures, mapManager);
         player.keepInsideMap(MAP_WIDTH, MAP_HEIGHT);
-        collectFood();
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE) && player.canSprinkleFood()) {
             sprinkleFood();
             player.startFoodCooldown();
@@ -120,7 +118,7 @@ public class GameScreen implements Screen {
         shapes.setProjectionMatrix(camera.combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         shapes.setColor(Color.GOLD);
-        for (FoodPickup food : foodPickups) {
+        for (Pickup food : Pickups) {
             com.badlogic.gdx.math.Rectangle bounds = food.getBounds();
             shapes.rect(bounds.x, bounds.y, bounds.width, bounds.height);
         }
@@ -196,16 +194,6 @@ public class GameScreen implements Screen {
         if (mapManager != null) mapManager.dispose();
     }
 
-    /** Gives the player any food pickup whose bounds they overlap. */
-    private void collectFood() {
-        for (int i = foodPickups.size - 1; i >= 0; i--) {
-            FoodPickup food = foodPickups.get(i);
-            if (player.getBounds().overlaps(food.getBounds())) {
-                food.interact(player);
-                if (food.isCollected()) foodPickups.removeIndex(i);
-            }
-        }
-    }
 
     /** Draws the active collision rectangles above the gameplay artwork for alignment checks. */
     private void renderCollisionDebug() {
@@ -219,10 +207,6 @@ public class GameScreen implements Screen {
         for (Goose goose : geese) {
             Rectangle gooseBounds = goose.getBounds();
             shapes.rect(gooseBounds.x, gooseBounds.y, gooseBounds.width, gooseBounds.height);
-        }
-        for (FoodPickup food : foodPickups) {
-            Rectangle foodBounds = food.getBounds();
-            shapes.rect(foodBounds.x, foodBounds.y, foodBounds.width, foodBounds.height);
         }
         shapes.end();
     }
