@@ -6,7 +6,7 @@ import com.badlogic.gdx.math.Vector2;
 /** A short-lived, small piece of food which distracts nearby geese. */
 public class FoodCrumb {
     public static final float DISTRACTION_DURATION = 4f;
-    public static final float SIZE = 4f;
+    public static final float SIZE = 2f;
 
     private final Vector2 position;
     private final Rectangle bounds;

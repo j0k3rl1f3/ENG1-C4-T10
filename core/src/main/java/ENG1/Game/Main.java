@@ -1,11 +1,10 @@
 package ENG1.Game;
 import ENG1.Game.Screens.GameScreen;
-import ENG1.Game.Screens.MainMenuScreen;
+import ENG1.Game.Screens.PauseScreen;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.utils.ScreenUtils;
 
 /** libGDX application entry point which creates and owns the active game screen. */
 public class Main extends Game {
@@ -30,7 +29,7 @@ public class Main extends Game {
     /** Opens the menu without disposing the supplied game, so it can later resume unchanged. */
     public void showPauseMenu(GameScreen pausedGame) {
         this.pausedGame = pausedGame;
-        setScreen(new MainMenuScreen(this, pausedGame));
+        setScreen(new PauseScreen(this, pausedGame));
     }
 
     /** Restores a paused game and releases the menu which was displaying above it. */

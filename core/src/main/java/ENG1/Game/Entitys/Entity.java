@@ -29,6 +29,7 @@ public abstract class Entity {
 
     /** Draws this entity. @param batch active sprite batch used for rendering */
     public abstract void render(SpriteBatch batch);
+
     /** @return the collision rectangle, kept in sync with the entity position */
     public Rectangle getBounds(){
         return bound;

@@ -9,9 +9,11 @@ import ENG1.Game.Managers.MapManager;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import ENG1.Game.Entitys.Bike;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -32,7 +34,9 @@ public class GameScreen implements Screen {
     private static final int MAX_GEESE = 50;
     private static final boolean SHOW_COLLISION_DEBUG = false;
     private final Main game;
+    private int SCORE;
     private Player player;
+    private Bike bike;
     private Array<Goose> geese;
     private Array<Pickup> Pickups;
     private Array<MapFeature> mapFeatures;
@@ -44,10 +48,10 @@ public class GameScreen implements Screen {
     final private OrthographicCamera camera = new OrthographicCamera(320, 240);
     private final ShapeRenderer shapes = new ShapeRenderer();
     private final BitmapFont font = new BitmapFont();
-    // Extend rather than letterbox: fullscreen displays gain visible world space without stretching art.
     private final ExtendViewport uiViewport = new ExtendViewport(640, 480);
     private final ExtendViewport viewport = new ExtendViewport(320, 240, camera);
-    private final Texture inventoryTexture = new Texture(files.internal("original assets/inventory.png"));
+    private final Texture inventoryTexture = new Texture(files.internal("original assets/inventory(1).png"));
+    private final TextureRegion inventoryBar = new TextureRegion(inventoryTexture, 0,0,632,100);
 
     public GameScreen(Main game) {
         this.game = game;
@@ -68,6 +72,7 @@ public class GameScreen implements Screen {
         mapManager = new MapManager("Map/GooseMap.tmx");
         mapFeatures = mapManager.getWaterRegions();
         Pickups = new Array<>();
+        bike = new Bike(200, 100);
         camera.position.set(320, 240, 0);
         camera.update();
         viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
@@ -82,9 +87,12 @@ public class GameScreen implements Screen {
             game.showPauseMenu(this);
             return;
         }
-
         gooseGraceTimer = Math.max(0, gooseGraceTimer - delta);
         player.update(delta, gooseGraceTimer > 0 ? null : geese, mapFeatures, mapManager);
+        if (bike != null && !bike.isCollected()
+            && player.getBounds().overlaps(bike.getBounds())) {
+            bike.interact(player);
+        }
         player.keepInsideMap(MAP_WIDTH, MAP_HEIGHT);
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE) && player.canSprinkleFood()) {
             sprinkleFood();
@@ -127,6 +135,11 @@ public class GameScreen implements Screen {
             com.badlogic.gdx.math.Rectangle bounds = food.getBounds();
             shapes.rect(bounds.x, bounds.y, bounds.width, bounds.height);
         }
+        if (bike != null && !bike.isCollected()) {
+            Rectangle bounds = bike.getBounds();
+            shapes.setColor(Color.CYAN);
+            shapes.rect(bounds.x, bounds.y, bounds.width, bounds.height);
+        }
         shapes.end();
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
@@ -151,13 +164,11 @@ public class GameScreen implements Screen {
         shapes.setColor(healthRatio > 0.5f ? Color.GREEN : healthRatio > 0.25f ? Color.ORANGE : Color.RED);
         shapes.rect(barX, barY, barWidth * healthRatio, barHeight);
         shapes.end();
-
         batch.setProjectionMatrix(uiViewport.getCamera().combined);
         batch.begin();
-        batch.draw(inventoryTexture, barX - 360, barY - 60,196, 64);
+        batch.draw(inventoryTexture, 20, barY - 16, 316, 50);
         font.setColor(Color.WHITE);
         font.draw(batch, "Health: " + player.getHealth() + " / " + player.getMaxHealth(), barX, barY + barHeight + 20);
-
         batch.end();
     }
 
@@ -175,6 +186,9 @@ public class GameScreen implements Screen {
 
     @Override
     public void resume() {
+
+    }
+    public void collectBike() {
 
     }
 

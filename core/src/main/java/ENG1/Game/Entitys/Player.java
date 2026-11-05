@@ -20,10 +20,8 @@ public class Player extends Entity {
     private static final float FOOD_COOLDOWN = 3f;
     private boolean hasFoodSprinkler;
     private float foodCooldown;
-    private static final float MOVE_SPEED = 75f;
+    private static float MOVE_SPEED = 64f;
     private static final float DRAW_SIZE = 64f;
-    private static final float OFFSETX = 32f;
-    private static final float OFFSETY = 32f;
     private enum Direction {DOWN, UP, RIGHT, LEFT}
     private static final float IDLE_FRAME_DURATION = 0.35f;
     private static final float WALK_FRAME_DURATION = 0.12f;
@@ -95,7 +93,6 @@ public class Player extends Entity {
         update(delta, null, null);
     }
 
-    /** Moves the player while keeping them outside geese and solid map features. */
     /**
      * Reads movement input and moves the player while resolving collisions.
      *
@@ -147,10 +144,10 @@ public class Player extends Entity {
             getBounds().setY(position.y);
         }
     }
-
+    /** for future invis cloak
     public boolean isInvisible() {
         return false;
-    }
+    } **/
 
     private boolean overlapsSolid(Array<Goose> geese, Array<MapFeature> mapFeatures, MapManager mapManager) {
         if (geese != null) {
@@ -234,6 +231,9 @@ public class Player extends Entity {
         return hasFoodSprinkler && foodCooldown <= 0 && isAlive();
     }
 
+    public static void collectBike() {
+        MOVE_SPEED += 5f;
+    }
     /**
      * Starts the three-second cooldown after a food sprinkle is created.
      */
@@ -272,11 +272,9 @@ public class Player extends Entity {
         int firstFrame, int frameCount, float frameDuration
     ) {
         TextureRegion[] frames = new TextureRegion[frameCount];
-
         for (int i = 0; i < frameCount; i++) {
             frames[i] = playerFrames[firstFrame + i];
         }
-
         return new Animation<>(frameDuration, frames);
     }
 
