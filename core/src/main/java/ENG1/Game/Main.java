@@ -1,6 +1,8 @@
 package ENG1.Game;
 import ENG1.Game.Screens.GameScreen;
+import ENG1.Game.Screens.MainMenuScreen;
 import ENG1.Game.Screens.PauseScreen;
+import ENG1.Game.Screens.WinScreen;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Texture;
@@ -13,11 +15,11 @@ public class Main extends Game {
     private GameScreen pausedGame;
 
     @Override
-    /** Initialises shared rendering resources and opens the main game screen. */
+    /** Initialises shared rendering resources and opens the main menu. */
     public void create() {
         batch = new SpriteBatch();
         image = new Texture("original assets/libgdx.png");
-        setScreen(new GameScreen(this));
+        setScreen(new MainMenuScreen(this));
     }
 
     @Override
@@ -38,6 +40,36 @@ public class Main extends Game {
         pausedGame = null;
         setScreen(gameScreen);
         pauseMenu.dispose();
+    }
+    public void showWinScreen(GameScreen completedGame) {
+        showEndScreen(completedGame, "YOU WON!");
+    }
+
+    /** Shows the end screen when the player has used all available time. */
+    public void showTimeExpiredScreen(GameScreen completedGame) {
+        showEndScreen(completedGame, "YOU RAN OUT OF TIME");
+    }
+
+    /** Shows the end screen when the geese have depleted the player's health. */
+    public void showChasedHomeScreen(GameScreen completedGame) {
+        showEndScreen(completedGame, "THE GEESE CHASED YOU BACK HOME");
+    }
+
+    private void showEndScreen(GameScreen completedGame, String message) {
+        setScreen(new WinScreen(this, message, GameScreen.points));
+        completedGame.dispose();
+    }
+    /** Starts a fresh game and releases the menu that launched it. */
+    public void startNewGame() {
+        Screen mainMenu = getScreen();
+        setScreen(new GameScreen(this));
+        mainMenu.dispose();
+    }
+
+    public void showMainMenu() {
+        Screen winScreen = getScreen();
+        setScreen(new MainMenuScreen(this));
+        winScreen.dispose();
     }
 
     @Override

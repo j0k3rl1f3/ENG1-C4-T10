@@ -1,15 +1,11 @@
 package ENG1.Game.Screens;
+import ENG1.Game.Entitys.*;
 import ENG1.Game.Main;
-import ENG1.Game.Entitys.Goose;
-import ENG1.Game.Entitys.FoodCrumb;
-import ENG1.Game.Entitys.Pickup;
-import ENG1.Game.Entitys.Player;
 import ENG1.Game.Managers.MapFeature;
 import ENG1.Game.Managers.MapManager;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
-import ENG1.Game.Entitys.Bike;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
@@ -30,20 +26,23 @@ public class GameScreen implements Screen {
     private static final float MAP_HEIGHT = 2048f;
     private static final float GOOSE_SPAWN_INTERVAL = 5f;
     private static final float GOOSE_GRACE_PERIOD = 4f;
+    private static final float GAME_DURATION_SECONDS = 5 * 60f;
     private static final float LAKE_ACTIVATION_DISTANCE = 280f;
     private static final int MAX_GEESE = 50;
     private static final boolean SHOW_COLLISION_DEBUG = false;
     private final Main game;
-    private int SCORE;
+    private WinTrigger winTrigger;;
     private Player player;
     private Bike bike;
     private Array<Goose> geese;
-    private Array<Pickup> Pickups;
+    private Array<FoodItem> Pickups;
     private Array<MapFeature> mapFeatures;
     private MapManager mapManager;
     private final Array<FoodCrumb> foodCrumbs = new Array<>();
     private final Rectangle cameraBounds = new Rectangle();
     private float gooseGraceTimer;
+    private float timeRemaining;
+    public static int points;
     final private SpriteBatch batch = new SpriteBatch();
     final private OrthographicCamera camera = new OrthographicCamera(320, 240);
     private final ShapeRenderer shapes = new ShapeRenderer();
@@ -60,19 +59,18 @@ public class GameScreen implements Screen {
     @Override
     /** Creates a fresh player, world features, and the starting food pickup. */
     public void show() {
-        // Game setScreen invokes show again when a paused screen is resumed.
-        // Keep the existing world instead of restarting it.
         if (player != null) return;
-        // The player artwork is 64×64, but its established 32×32 footprint keeps
-        // map, pickup, and goose collisions aligned with the tile grid.
         player = new Player(100,100, 32,32);
+        points = 0;
         geese = new com.badlogic.gdx.utils.Array<>();
         gooseGraceTimer = GOOSE_GRACE_PERIOD;
+        timeRemaining = GAME_DURATION_SECONDS;
         foodCrumbs.clear();
         mapManager = new MapManager("Map/GooseMap.tmx");
         mapFeatures = mapManager.getWaterRegions();
         Pickups = new Array<>();
         bike = new Bike(200, 100);
+        winTrigger = new WinTrigger(58 * 32, 57 * 32);
         camera.position.set(320, 240, 0);
         camera.update();
         viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
@@ -89,6 +87,19 @@ public class GameScreen implements Screen {
         }
         gooseGraceTimer = Math.max(0, gooseGraceTimer - delta);
         player.update(delta, gooseGraceTimer > 0 ? null : geese, mapFeatures, mapManager);
+        if (!player.isAlive()) {
+            game.showChasedHomeScreen(this);
+            return;
+        }
+        timeRemaining = Math.max(0, timeRemaining - delta);
+        if (timeRemaining <= 0) {
+            game.showTimeExpiredScreen(this);
+            return;
+        }
+        if (player.getBounds().overlaps(winTrigger.getBounds())) {
+            game.showWinScreen(this);
+            return;
+        }
         if (bike != null && !bike.isCollected()
             && player.getBounds().overlaps(bike.getBounds())) {
             bike.interact(player);
@@ -126,7 +137,7 @@ public class GameScreen implements Screen {
         shapes.setProjectionMatrix(camera.combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         shapes.setColor(Color.GOLD);
-        for (Pickup food : Pickups) {
+        for (FoodItem food : Pickups) {
             com.badlogic.gdx.math.Rectangle bounds = food.getBounds();
             shapes.rect(bounds.x, bounds.y, bounds.width, bounds.height);
         }
@@ -143,6 +154,7 @@ public class GameScreen implements Screen {
         shapes.end();
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
+        winTrigger.render(batch);
         player.render(batch);
         for (Goose goose : geese) goose.render(batch);
         batch.end();
@@ -169,6 +181,8 @@ public class GameScreen implements Screen {
         batch.draw(inventoryTexture, 20, barY - 16, 316, 50);
         font.setColor(Color.WHITE);
         font.draw(batch, "Health: " + player.getHealth() + " / " + player.getMaxHealth(), barX, barY + barHeight + 20);
+        font.draw(batch, "Time: " + formatTimeRemaining(), uiWidth/2, uiHeight - 20);
+        font.draw(batch, "points: " + points, uiWidth/2, 20);
         batch.end();
     }
 
@@ -206,6 +220,7 @@ public class GameScreen implements Screen {
         if (player != null) player.dispose();
         if (geese != null) for (Goose goose : geese) goose.dispose();
         if (mapManager != null) mapManager.dispose();
+        if (winTrigger != null) winTrigger.dispose();
     }
 
 
@@ -223,6 +238,14 @@ public class GameScreen implements Screen {
             shapes.rect(gooseBounds.x, gooseBounds.y, gooseBounds.width, gooseBounds.height);
         }
         shapes.end();
+    }
+
+    /** Formats the remaining countdown as minutes and two-digit seconds. */
+    private String formatTimeRemaining() {
+        int totalSeconds = (int) Math.ceil(timeRemaining);
+        int minutes = totalSeconds / 60;
+        int seconds = totalSeconds % 60;
+        return minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
     }
 
     /** Creates a small scatter of food in front of the player. */
@@ -269,5 +292,9 @@ public class GameScreen implements Screen {
                     lake.y + lake.height / 2f - 8 + MathUtils.sin(angle) * spawnRadius, 16, 16));
             }
         }
+    }
+
+    public static void goosePoint(){
+        points += 10;
     }
 }

@@ -4,12 +4,12 @@ import ENG1.Game.Managers.Interactable;
 import com.badlogic.gdx.math.Rectangle;
 
 /** A map pickup that permanently unlocks the player's food-sprinkler ability. */
-public class Pickup implements Interactable {
+public class FoodItem implements Interactable {
     private final Rectangle bounds;
     private boolean collected;
 
     /** @param x left edge of the pickup in world units @param y bottom edge of the pickup in world units */
-    public Pickup(float x, float y) {
+    public FoodItem(float x, float y) {
         bounds = new Rectangle(x, y, 16, 16);
     }
 

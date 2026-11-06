@@ -1,4 +1,5 @@
 package ENG1.Game.Entitys;
+import ENG1.Game.Screens.GameScreen;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.Gdx;
@@ -14,7 +15,7 @@ public class Goose extends Entity{
     private static final float SPEED = 45f;
     private static final float DRAW_SIZE = 64f;
     private static final float ATTACK_COOLDOWN = 1f;
-    private static final int DAMAGE = 1;
+    private static final int DAMAGE = 5;
     private final Texture idleSheet = new Texture(Gdx.files.internal("Goose/Idle.png"));
     private final Texture runSheet = new Texture(Gdx.files.internal("Goose/Run.png"));
     private final Texture flapSheet = new Texture(Gdx.files.internal("Goose/Flap.png"));
@@ -104,7 +105,9 @@ public class Goose extends Entity{
             touchingPlayer |= moveAxis(movement.y, false, player, geese, mapFeatures, mapManager);
         }
 
-        if (distracted) return;
+        if (distracted) {
+            return;
+        }
         attackTimer -= delta;
         if (attackTimer <= 0 && touchingPlayer) {
             player.takeDamage(DAMAGE);
