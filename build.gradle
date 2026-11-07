@@ -27,8 +27,13 @@ allprojects {
 
 configure(subprojects) {
   apply plugin: 'java-library'
-  java.sourceCompatibility = 21
-  java.targetCompatibility = 21
+  java.sourceCompatibility = JavaVersion.VERSION_17
+  java.targetCompatibility = JavaVersion.VERSION_17
+
+  // Compile against the Java 17 API as well as emitting Java 17 bytecode.
+  tasks.withType(JavaCompile).configureEach {
+    options.release.set(17)
+  }
 
   // From https://lyze.dev/2021/04/29/libGDX-Internal-Assets-List/
   // The article can be helpful when using assets.txt in your project.

@@ -22,10 +22,10 @@ sourceSets.main.resources.srcDirs += [ rootProject.file('assets').path ]
 application.mainClass = 'ENG1.Game.lwjgl3.Lwjgl3Launcher'
 application.applicationName = appName
 eclipse.project.name = appName + '-lwjgl3'
-java.sourceCompatibility = 21
-java.targetCompatibility = 21
+java.sourceCompatibility = JavaVersion.VERSION_17
+java.targetCompatibility = JavaVersion.VERSION_17
 if (JavaVersion.current().isJava9Compatible()) {
-        compileJava.options.release.set(21)
+        compileJava.options.release.set(17)
 }
 
 dependencies {
@@ -142,12 +142,12 @@ construo {
   targets.configure {
     register("linuxX64", Target.Linux) {
       architecture.set(Target.Architecture.X86_64)
-      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.10%2B7/OpenJDK21U-jdk_x64_linux_hotspot_21.0.10_7.tar.gz")
+      jdkUrl.set("https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_x64_linux_hotspot_17.0.20.1_1.tar.gz")
       // Linux does not currently have a way to set the icon on the executable
     }
     register("macM1", Target.MacOs) {
       architecture.set(Target.Architecture.AARCH64)
-      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.10%2B7/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.10_7.tar.gz")
+      jdkUrl.set("https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_aarch64_mac_hotspot_17.0.20.1_1.tar.gz")
       // macOS needs an identifier
       identifier.set("ENG1.Game." + appName)
       // Optional: icon for macOS, as an ICNS file
@@ -155,7 +155,7 @@ construo {
     }
     register("macX64", Target.MacOs) {
       architecture.set(Target.Architecture.X86_64)
-      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.10%2B7/OpenJDK21U-jdk_x64_mac_hotspot_21.0.10_7.tar.gz")
+      jdkUrl.set("https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_x64_mac_hotspot_17.0.20.1_1.tar.gz")
       // macOS needs an identifier
       identifier.set("ENG1.Game." + appName)
       // Optional: icon for macOS, as an ICNS file
@@ -165,7 +165,7 @@ construo {
       architecture.set(Target.Architecture.X86_64)
       // Optional: icon for Windows, as a PNG
       icon.set(project.file("icons/logo.png"))
-      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.10%2B7/OpenJDK21U-jdk_x64_windows_hotspot_21.0.10_7.zip")
+      jdkUrl.set("https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_x64_windows_hotspot_17.0.20.1_1.zip")
       // Uncomment the next line to show a console when the game runs, to print messages.
       //useConsole.set(true)
     }
