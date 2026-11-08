@@ -66,7 +66,6 @@ public class Player extends Entity {
     public void render(SpriteBatch batch) {
         TextureRegion frame = getCurrentAnimation().getKeyFrame(animationTime, true);
         batch.draw(frame, position.x  - (0.25f * DRAW_SIZE), position.y  - (0.25f * DRAW_SIZE), DRAW_SIZE, DRAW_SIZE);
-        unlockFoodSprinkler();
     }
     @Override
     public void dispose() {

@@ -1,6 +1,7 @@
 package ENG1.Game.Screens;
 import ENG1.Game.Entitys.*;
 import ENG1.Game.Main;
+import ENG1.Game.Managers.Interactable;
 import ENG1.Game.Managers.MapFeature;
 import ENG1.Game.Managers.MapManager;
 import com.badlogic.gdx.Gdx;
@@ -51,6 +52,8 @@ public class GameScreen implements Screen {
     private final ExtendViewport viewport = new ExtendViewport(320, 240, camera);
     private final Texture inventoryTexture = new Texture(files.internal("original assets/inventory(1).png"));
     private final TextureRegion inventoryBar = new TextureRegion(inventoryTexture, 0,0,632,100);
+    private final Texture bikeIcon = new Texture(files.internal("assets/bikeIcon.png"));
+    private final Texture foodIcon = new Texture(files.internal("assets/foodIcon.png"));
 
     public GameScreen(Main game) {
         this.game = game;
@@ -61,6 +64,9 @@ public class GameScreen implements Screen {
     public void show() {
         if (player != null) return;
         player = new Player(100,100, 32,32);
+        FoodItem startingFood = new FoodItem(0, 0);
+        player.addItem(startingFood);
+        player.unlockFoodSprinkler();
         points = 0;
         geese = new com.badlogic.gdx.utils.Array<>();
         gooseGraceTimer = GOOSE_GRACE_PERIOD;
@@ -103,6 +109,7 @@ public class GameScreen implements Screen {
         if (bike != null && !bike.isCollected()
             && player.getBounds().overlaps(bike.getBounds())) {
             bike.interact(player);
+            player.addItem(bike);
         }
         player.keepInsideMap(MAP_WIDTH, MAP_HEIGHT);
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE) && player.canSprinkleFood()) {
@@ -179,11 +186,31 @@ public class GameScreen implements Screen {
         batch.setProjectionMatrix(uiViewport.getCamera().combined);
         batch.begin();
         batch.draw(inventoryTexture, 20, barY - 16, 316, 50);
+        float inventoryX = 20;
+        float inventoryY = barY - 16;
+        float slotSpacing = 30;
+        float iconSize = 20;
+        Array<Interactable> items = player.getInventory();
+        for (int i = 0; i < Math.min(items.size, 10); i++) {
+            Texture icon = getInventoryIcon(items.get(i));
+            if (icon != null) {
+                float iconX = inventoryX + 14 + i * slotSpacing;
+                float iconY = inventoryY + 10;
+                batch.draw(icon, iconX, iconY, iconSize, iconSize);
+            }
+        }
         font.setColor(Color.WHITE);
         font.draw(batch, "Health: " + player.getHealth() + " / " + player.getMaxHealth(), barX, barY + barHeight + 20);
-        font.draw(batch, "Time: " + formatTimeRemaining(), uiWidth/2, uiHeight - 20);
-        font.draw(batch, "points: " + points, uiWidth/2, 20);
+        font.draw(batch, "Time: " + formatTimeRemaining(), 20, 20);
+        font.draw(batch, "points: " + points, barX, 20);
         batch.end();
+    }
+
+    private Texture getInventoryIcon(Interactable interactable) {{
+            if (interactable instanceof Bike) return bikeIcon;
+            if (interactable instanceof FoodItem) return foodIcon;
+            return null;
+        }
     }
 
     @Override
