@@ -1,5 +1,4 @@
-package ENG1.Game.Entitys;
-import ENG1.Game.Screens.GameScreen;
+package ENG1.Game.Entities;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Texture;

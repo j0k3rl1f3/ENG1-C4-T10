@@ -1,7 +1,6 @@
-package ENG1.Game.Entitys;
+package ENG1.Game.Entities;
 
 import ENG1.Game.Managers.Interactable;
-import ENG1.Game.Screens.GameScreen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;

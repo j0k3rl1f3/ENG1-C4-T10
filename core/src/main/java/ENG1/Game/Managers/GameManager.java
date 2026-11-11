@@ -1,6 +1,6 @@
 package ENG1.Game.Managers;
-import ENG1.Game.Entitys.Goose;
-import ENG1.Game.Entitys.Player;
+import ENG1.Game.Entities.Goose;
+import ENG1.Game.Entities.Player;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.utils.Array;

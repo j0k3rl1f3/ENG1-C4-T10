@@ -1,5 +1,5 @@
 package ENG1.Game.Screens;
-import ENG1.Game.Entitys.*;
+import ENG1.Game.Entities.*;
 import ENG1.Game.Main;
 import ENG1.Game.Managers.Interactable;
 import ENG1.Game.Managers.MapFeature;

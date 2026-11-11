@@ -1,5 +1,5 @@
 package ENG1.Game.Managers;
-import ENG1.Game.Entitys.Player;
+import ENG1.Game.Entities.Player;
 import com.badlogic.gdx.math.Rectangle;
 
 /** A world object the player can collect or otherwise interact with. */
