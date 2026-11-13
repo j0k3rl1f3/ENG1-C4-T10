@@ -40,6 +40,7 @@ public class GameScreen implements Screen {
     private Array<MapFeature> mapFeatures;
     private MapManager mapManager;
     private final Array<FoodCrumb> foodCrumbs = new Array<>();
+    private final Array<Coin> coins = new Array<>();
     private final Rectangle cameraBounds = new Rectangle();
     private float gooseGraceTimer;
     private float timeRemaining;
@@ -223,6 +224,9 @@ public class GameScreen implements Screen {
     @Override
     public void pause() {
 
+    }
+    public static void addCoin() {
+        points += 50;
     }
 
     @Override

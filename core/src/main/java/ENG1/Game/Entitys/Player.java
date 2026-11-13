@@ -234,6 +234,9 @@ public class Player extends Entity {
     public static void collectBike() {
         MOVE_SPEED += 5f;
     }
+    public static void collectCoin() {
+        GameScreen.addCoin();
+    }
     /**
      * Starts the three-second cooldown after a food sprinkle is created.
      */
