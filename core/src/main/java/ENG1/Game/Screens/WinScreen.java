@@ -75,8 +75,8 @@ public class WinScreen implements Screen {
         font.draw(batch, "Time left: " + formattedTime, (WORLD_WIDTH - labelLayout.width) / 2f, 204);
         labelLayout.setText(font, "Game points: " + points);
         font.draw(batch, "Game points: " + points, (WORLD_WIDTH - labelLayout.width) / 2f, 184);
-        labelLayout.setText(font, "Total points: " + (points + Math.round(time * 300)));
-        font.draw(batch, "Total points: " + (points + Math.round(time * 300)), (WORLD_WIDTH - labelLayout.width) / 2f, 164);
+        labelLayout.setText(font, "Total points: " + (points + Math.round(time * 150)));
+        font.draw(batch, "Total points: " + (points + Math.round(time * 150)), (WORLD_WIDTH - labelLayout.width) / 2f, 164);
         drawButton(newGameBounds, "NEW GAME");
         drawButton(mainMenuBounds, "MAIN MENU");
         batch.draw(closeArt, CLOSE_X, CLOSE_Y, CLOSE_SIZE, CLOSE_SIZE);
