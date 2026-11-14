@@ -22,14 +22,16 @@ public class WinScreen implements Screen {
     private static final float BUTTON_WIDTH = 136f;
     private static final float BUTTON_HEIGHT = 44f;
     private static final float BUTTON_X = (WORLD_WIDTH - BUTTON_WIDTH) / 2f;
-    private static final float NEW_GAME_Y = 122f;
-    private static final float SETTINGS_Y = 66f;
+    private static final float NEW_GAME_Y = 102f;
+    private static final float SETTINGS_Y = 46f;
     private static final float CLOSE_SIZE = 24f;
     private static final float CLOSE_X = WORLD_WIDTH - CLOSE_SIZE - 12f;
     private static final float CLOSE_Y = WORLD_HEIGHT - CLOSE_SIZE - 12f;
     private final Main game;
     private final String message;
     private final int points;
+    private final float time;
+    private final String formattedTime;
     private final SpriteBatch batch = new SpriteBatch();
     private final BitmapFont font = new BitmapFont();
     private final GlyphLayout labelLayout = new GlyphLayout();
@@ -44,10 +46,13 @@ public class WinScreen implements Screen {
     private final Rectangle closeBounds = new Rectangle(CLOSE_X, CLOSE_Y, CLOSE_SIZE, CLOSE_SIZE);
     private final Vector2 clickPosition = new Vector2();
 
-    public WinScreen(Main game, String message, int points) {
+
+    public WinScreen(Main game, String message, int points, float time, String formattedTime) {
         this.game = game;
         this.message = message;
+        this.time = time;
         this.points = points;
+        this.formattedTime = formattedTime;
     }
 
     @Override
@@ -65,11 +70,15 @@ public class WinScreen implements Screen {
         batch.begin();
         font.setColor(Color.WHITE);
         labelLayout.setText(font, message);
-        font.draw(batch, message, (WORLD_WIDTH - labelLayout.width) / 2f, 204);
-        labelLayout.setText(font, "Points: " + points);
-        font.draw(batch, "Points: " + points, (WORLD_WIDTH - labelLayout.width) / 2f, 184);
-        drawButton(newGameBounds, "START NEW GAME");
-        drawButton(mainMenuBounds, "RETURN TO MAIN MENU");
+        font.draw(batch, message, (WORLD_WIDTH - labelLayout.width) / 2f, 224);
+        labelLayout.setText(font, "Time left: " + formattedTime);
+        font.draw(batch, "Time left: " + formattedTime, (WORLD_WIDTH - labelLayout.width) / 2f, 204);
+        labelLayout.setText(font, "Game points: " + points);
+        font.draw(batch, "Game points: " + points, (WORLD_WIDTH - labelLayout.width) / 2f, 184);
+        labelLayout.setText(font, "Total points: " + (points + Math.round(time * 150)));
+        font.draw(batch, "Total points: " + (points + Math.round(time * 150)), (WORLD_WIDTH - labelLayout.width) / 2f, 164);
+        drawButton(newGameBounds, "NEW GAME");
+        drawButton(mainMenuBounds, "MAIN MENU");
         batch.draw(closeArt, CLOSE_X, CLOSE_Y, CLOSE_SIZE, CLOSE_SIZE);
         batch.end();
     }

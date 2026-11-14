@@ -56,7 +56,7 @@ public class Main extends Game {
     }
 
     private void showEndScreen(GameScreen completedGame, String message) {
-        setScreen(new WinScreen(this, message, GameScreen.points));
+        setScreen(new WinScreen(this, message, GameScreen.points, GameScreen.timeRemaining, GameScreen.formatTimeRemaining()));
         completedGame.dispose();
     }
     /** Starts a fresh game and releases the menu that launched it. */

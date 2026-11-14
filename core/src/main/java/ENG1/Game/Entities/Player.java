@@ -1,4 +1,5 @@
 package ENG1.Game.Entities;
+import ENG1.Game.Entities.Entity;
 import ENG1.Game.Screens.GameScreen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -233,9 +234,6 @@ public class Player extends Entity {
 
     public static void collectBike() {
         MOVE_SPEED += 5f;
-    }
-    public static void collectCoin() {
-        GameScreen.addCoin();
     }
     /**
      * Starts the three-second cooldown after a food sprinkle is created.
