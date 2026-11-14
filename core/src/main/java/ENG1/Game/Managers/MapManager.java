@@ -11,6 +11,8 @@ import com.badlogic.gdx.utils.Array;
 
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.GridPoint2;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
 
 /** Loads, renders, and queries collision data for a tiled map. */
 public class MapManager {
@@ -142,6 +144,46 @@ public class MapManager {
     /** @return true if the supplied bounds overlap the painted {@code Muddy} layer */
     public boolean isMuddy(Rectangle rect) {
         return overlapsLayer("Muddy", rect);
+    }
+
+    /**
+     * Picks a random open position from a painted cell on the Tiled {@code Path} layer.
+     * The returned rectangle footprint is kept clear of map collision layers.
+     */
+    public Vector2 getRandomPathPosition(float objectWidth, float objectHeight) {
+        return getRandomPathPosition(objectWidth, objectHeight, null);
+    }
+
+    /** Picks a random valid path position within a preferred world-space area when possible. */
+    public Vector2 getRandomPathPosition(float objectWidth, float objectHeight, Rectangle preferredArea) {
+        TiledMapTileLayer pathLayer = getTileLayer("Path");
+        if (pathLayer == null || pathLayer.getWidth() == 0 || pathLayer.getHeight() == 0) return null;
+
+        float tileWidth = pathLayer.getTileWidth();
+        float tileHeight = pathLayer.getTileHeight();
+        int minX = 0;
+        int maxX = pathLayer.getWidth() - 1;
+        int minY = 0;
+        int maxY = pathLayer.getHeight() - 1;
+        if (preferredArea != null) {
+            minX = Math.max(0, (int) Math.floor(preferredArea.x / tileWidth));
+            maxX = Math.min(maxX, (int) Math.floor((preferredArea.x + preferredArea.width) / tileWidth));
+            minY = Math.max(0, (int) Math.floor(preferredArea.y / tileHeight));
+            maxY = Math.min(maxY, (int) Math.floor((preferredArea.y + preferredArea.height) / tileHeight));
+            if (minX > maxX || minY > maxY) return null;
+        }
+        for (int attempt = 0; attempt < 1000; attempt++) {
+            int cellX = MathUtils.random(minX, maxX);
+            int cellY = MathUtils.random(minY, maxY);
+            if (pathLayer.getCell(cellX, cellY) == null) continue;
+
+            float x = cellX * tileWidth + (tileWidth - objectWidth) / 2f;
+            float y = cellY * tileHeight + (tileHeight - objectHeight) / 2f;
+            if (preferredArea != null && !preferredArea.contains(x + objectWidth / 2f, y + objectHeight / 2f)) continue;
+            Rectangle candidate = new Rectangle(x, y, objectWidth, objectHeight);
+            if (!checkCollision(candidate)) return new Vector2(x, y);
+        }
+        return null;
     }
 
     /** Draws red-outline equivalents of every map area that blocks the player. */

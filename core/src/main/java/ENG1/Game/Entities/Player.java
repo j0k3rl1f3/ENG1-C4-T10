@@ -1,24 +1,26 @@
 package ENG1.Game.Entities;
+import ENG1.Game.Entities.Entity;
+import ENG1.Game.Screens.GameScreen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import ENG1.Game.Managers.Interactable;
 import ENG1.Game.Managers.MapFeature;
 import ENG1.Game.Managers.MapManager;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
-import ENG1.Game.Screens.GameScreen;
 
 /** The user-controlled character, including movement, health, inventory, and food-sprinkler state. */
 public class Player extends Entity {
     private static final int MAX_HEALTH = 100;
-    private int health = MAX_HEALTH;
+    public static int health = MAX_HEALTH;
     private final Array<Interactable> inventory = new Array<>();
     private final Vector2 facing = new Vector2(1, 0);
+    private float invulnerabilityTime;
     private static final float FOOD_COOLDOWN = 3f;
     private boolean hasFoodSprinkler;
     private float foodCooldown;
@@ -40,12 +42,6 @@ public class Player extends Entity {
     private Direction direction = Direction.RIGHT;
     private boolean moving;
     private float animationTime;
-    private Rectangle playerHitBox;
-    private Rectangle playerNearMissBox;
-    private float invulnerabilityTime = 0f;
-    private int nearMiss = 0;
-    private float nearMissTimer;
-    private boolean gooseHit = false;
 
     /**
      * Creates a player at the supplied world position with the supplied collision size.
@@ -64,10 +60,6 @@ public class Player extends Entity {
         walkUp = makeAnimation(16, 4, WALK_FRAME_DURATION);
         walkRight = makeAnimation(20, 4, WALK_FRAME_DURATION);
         walkLeft = makeAnimation(24, 4, WALK_FRAME_DURATION);
-        // Not going to be attacked on frame 1, so x=0 and y=0.
-        // Updates every frame to the player position after
-        playerHitBox = new Rectangle(0, 0, 2, 2);
-        playerNearMissBox = new Rectangle(0, 0, 128, 128);
     }
 
     /**
@@ -76,7 +68,9 @@ public class Player extends Entity {
     @Override
     public void render(SpriteBatch batch) {
         TextureRegion frame = getCurrentAnimation().getKeyFrame(animationTime, true);
-        batch.draw(frame, position.x  - (0.25f * DRAW_SIZE), position.y  - (0.25f * DRAW_SIZE), DRAW_SIZE, DRAW_SIZE);
+        float drawX = position.x + (getWidth() - DRAW_SIZE) / 2f;
+        float drawY = position.y + (getHeight() - DRAW_SIZE) / 2f;
+        batch.draw(frame, drawX, drawY, DRAW_SIZE, DRAW_SIZE);
     }
     @Override
     public void dispose() {
@@ -84,31 +78,20 @@ public class Player extends Entity {
         playerSheet.dispose();
     }
 
-    /** @return player's left world coordinate */
-    public float getX() { return position.x; }
+    /**
+     * @return player's left world coordinate
+     */
+    public float getX() {
+        return position.x;
+    }
 
-    /** @return player's bottom world coordinate */
+    /**
+     * @return player's bottom world coordinate
+     */
     public float getY() {
         return position.y;
     }
 
-    /** @return player's hitbox and near miss box */
-    public Rectangle getPlayerHitBox() {
-        return playerHitBox;
-    }
-    public Rectangle getPlayerNearMissBox() {
-        return playerNearMissBox;
-    }
-
-    /** @return player's invulnerability time */
-    public float getInvulnerabilityTime() { return invulnerabilityTime; }
-
-    public void setInvulnerabilityTime(float newTime) { invulnerabilityTime = newTime; }
-
-    /** @return player's near miss score */
-    public int getNearMiss() { return nearMiss; }
-
-    public void setGooseHit(boolean hit) { gooseHit = hit; }
 
     @Override
     public void update(float delta) {
@@ -136,6 +119,7 @@ public class Player extends Entity {
      */
     public void update(float delta, Array<Goose> geese, Array<MapFeature> mapFeatures, MapManager mapManager) {
         foodCooldown = Math.max(0, foodCooldown - delta);
+        invulnerabilityTime = Math.max(0, invulnerabilityTime - delta);
         if (health <= 0) return;
         velocity.set(0, 0);
         if (Gdx.input.isKeyPressed(Input.Keys.LEFT) || Gdx.input.isKeyPressed(Input.Keys.A)) velocity.x = -MOVE_SPEED;
@@ -151,70 +135,29 @@ public class Player extends Entity {
             velocity.nor().scl(MOVE_SPEED * speedMultiplier);
         }
         float previousX = position.x;
+        Rectangle previousBounds = copyBounds(getBounds());
         position.x += velocity.x * delta;
         getBounds().setX(position.x);
-        getPlayerHitBox().setX(Math.round(position.x - 1 + (0.5f * this.getWidth())));
-        getPlayerNearMissBox().setX(Math.round(position.x - 64 + (0.5f * this.getWidth())));
-        if (overlapsSolid(geese, mapFeatures, mapManager)) {
+        if (overlapsWorld(mapFeatures, mapManager) || increasesGooseOverlap(previousBounds, geese)) {
             position.x = previousX;
             getBounds().setX(position.x);
-            getPlayerHitBox().setX(Math.round(position.x - 1 + (0.5f * this.getWidth())));
-            getPlayerNearMissBox().setX(Math.round(position.x - 64 + (0.5f * this.getWidth())));
         }
 
         float previousY = position.y;
+        previousBounds.set(getBounds());
         position.y += velocity.y * delta;
         getBounds().setY(position.y);
-        getPlayerHitBox().setY(Math.round(position.y - 1 + (0.5f * this.getHeight())));
-        getPlayerNearMissBox().setY(Math.round(position.y - 64 + (0.5f * this.getHeight())));
-        if (overlapsSolid(geese, mapFeatures, mapManager)) {
+        if (overlapsWorld(mapFeatures, mapManager) || increasesGooseOverlap(previousBounds, geese)) {
             position.y = previousY;
             getBounds().setY(position.y);
-            getPlayerHitBox().setY(Math.round(position.y - 1 + (0.5f * this.getHeight())));
-            getPlayerNearMissBox().setY(Math.round(position.y - 64 + (0.5f * this.getHeight())));
         }
-        // Make sure invulnerability can run out
-        setInvulnerabilityTime(
-            Math.max(0f, invulnerabilityTime - delta)
-        );
-
-        // Near miss scoring
-        boolean nearbyGoose = false;
-        if (geese != null) {
-            for (int i = 0; i < geese.size; i++) {
-                Goose goose = geese.get(i);
-                if (getBounds().overlaps(goose.getBounds())) {
-                    nearbyGoose = true;
-                }
-                if (goose.isTouchingPlayer(this)) { gooseHit = true; }
-            }
-        }
-        nearMissTimer = Math.max(0, nearMissTimer - delta);
-        if (nearMissTimer == 0) {
-            GameScreen.points += nearMiss;
-            nearMiss = 0;
-            gooseHit = false;
-        }
-        if (nearbyGoose) {
-            nearMissTimer = 3;
-            nearMiss += 5;
-        }
-        if (gooseHit) { nearMiss = 0; }
     }
     /** for future invis cloak
     public boolean isInvisible() {
         return false;
     } **/
 
-    private boolean overlapsSolid(Array<Goose> geese, Array<MapFeature> mapFeatures, MapManager mapManager) {
-
-//        if (geese != null) {
-//            for (int i = 0; i < geese.size; i++) {
-//                Goose goose = geese.get(i);
-//                if (getPlayerHitBox().overlaps(goose.getBounds())) return true;
-//            }
-//        }
-
+    private boolean overlapsWorld(Array<MapFeature> mapFeatures, MapManager mapManager) {
         // With a Tiled map, use its exact painted collision cells. MapFeature lake rectangles
         // are retained only for goose spawning and may cover grass inside an irregular shoreline.
         if (mapFeatures != null && mapManager == null) {
@@ -224,6 +167,30 @@ public class Player extends Entity {
         }
         if (mapManager != null && mapManager.checkCollision(getBounds())) return true;
         return false;
+    }
+
+    /** Allows movement that separates the player from a goose, but blocks movement deeper into it. */
+    private boolean increasesGooseOverlap(Rectangle previousBounds, Array<Goose> geese) {
+        if (geese == null) return false;
+        for (Goose goose : geese) {
+            Rectangle gooseBounds = goose.getBounds();
+            if (overlapArea(getBounds(), gooseBounds) > overlapArea(previousBounds, gooseBounds) + 0.001f) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private float overlapArea(Rectangle first, Rectangle second) {
+        float overlapWidth = Math.max(0, Math.min(first.x + first.width, second.x + second.width)
+            - Math.max(first.x, second.x));
+        float overlapHeight = Math.max(0, Math.min(first.y + first.height, second.y + second.height)
+            - Math.max(first.y, second.y));
+        return overlapWidth * overlapHeight;
+    }
+
+    private Rectangle copyBounds(Rectangle bounds) {
+        return new Rectangle(bounds.x, bounds.y, bounds.width, bounds.height);
     }
 
     public void takeDamage() {
@@ -291,7 +258,23 @@ public class Player extends Entity {
     }
 
     public static void collectBike() {
-        MOVE_SPEED += 5f;
+        MOVE_SPEED += 10f;
+    }
+    public static void collectHeal(){
+        health = MAX_HEALTH;
+    }
+
+    /** Adds the points awarded by a collected coin. */
+    public static void collectCoin() {
+        GameScreen.addCoin();
+    }
+
+    public float getInvulnerabilityTime() {
+        return invulnerabilityTime;
+    }
+
+    public void setInvulnerabilityTime(float seconds) {
+        invulnerabilityTime = Math.max(0, seconds);
     }
     /**
      * Starts the three-second cooldown after a food sprinkle is created.
@@ -370,5 +353,4 @@ public class Player extends Entity {
                 return idleDown;
         }
     }
-
 }

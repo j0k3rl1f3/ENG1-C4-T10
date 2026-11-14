@@ -26,23 +26,30 @@ public class GameScreen implements Screen {
     private static final float MAP_WIDTH = 2048f;
     private static final float MAP_HEIGHT = 2048f;
     private static final float GOOSE_SPAWN_INTERVAL = 5f;
+    private static final float COIN_SPAWN_INTERVAL = 2.5f;
     private static final float GOOSE_GRACE_PERIOD = 4f;
     private static final float GAME_DURATION_SECONDS = 5 * 60f;
     private static final float LAKE_ACTIVATION_DISTANCE = 280f;
     private static final int MAX_GEESE = 50;
-    private static final boolean SHOW_COLLISION_DEBUG = false;
+    private static final int MAX_COINS = 18;
+    private static final float COIN_SIZE = 16f;
+    public static boolean SHOW_COLLISION_DEBUG = false;
+    public static boolean SHOW_CONTROL_ICONS = true;
     private final Main game;
     private WinTrigger winTrigger;;
     private Player player;
     private Bike bike;
+    private Heal heal;
     private Array<Goose> geese;
     private Array<FoodItem> Pickups;
     private Array<MapFeature> mapFeatures;
     private MapManager mapManager;
     private final Array<FoodCrumb> foodCrumbs = new Array<>();
+    private final Array<Coin> coins = new Array<>();
     private final Rectangle cameraBounds = new Rectangle();
     private float gooseGraceTimer;
-    public static float timeRemaining;
+    private float coinSpawnTimer;
+    private float timeRemaining;
     public static int points;
     final private SpriteBatch batch = new SpriteBatch();
     final private OrthographicCamera camera = new OrthographicCamera(320, 240);
@@ -52,8 +59,12 @@ public class GameScreen implements Screen {
     private final ExtendViewport viewport = new ExtendViewport(320, 240, camera);
     private final Texture inventoryTexture = new Texture(files.internal("original assets/inventory(1).png"));
     private final TextureRegion inventoryBar = new TextureRegion(inventoryTexture, 0,0,632,100);
-    private final Texture bikeIcon = new Texture(files.internal("assets/bikeIcon.png"));
     private final Texture foodIcon = new Texture(files.internal("assets/foodIcon.png"));
+    private final Texture walkIcon = new Texture(files.internal("assets/wasd.png"));
+    private final Texture pauseIcon = new Texture(files.internal("assets/esc.png"));
+    private final Texture throwIcon = new Texture(files.internal("assets/space.png"));
+    private final Texture coinIcon = new Texture(files.internal(
+        "Chronicles of the Realm - Coins Pack (16x16)/16x16/Coin_Gold_0.png"));
 
     public GameScreen(Main game) {
         this.game = game;
@@ -63,19 +74,22 @@ public class GameScreen implements Screen {
     /** Creates a fresh player, world features, and the starting food pickup. */
     public void show() {
         if (player != null) return;
-        player = new Player(100,100, 32,32);
+        player = new Player(100,100, 24,24);
         FoodItem startingFood = new FoodItem(0, 0);
         player.addItem(startingFood);
         player.unlockFoodSprinkler();
         points = 0;
         geese = new com.badlogic.gdx.utils.Array<>();
         gooseGraceTimer = GOOSE_GRACE_PERIOD;
+        coins.clear();
+        coinSpawnTimer = COIN_SPAWN_INTERVAL;
         timeRemaining = GAME_DURATION_SECONDS;
         foodCrumbs.clear();
         mapManager = new MapManager("Map/GooseMap.tmx");
         mapFeatures = mapManager.getWaterRegions();
         Pickups = new Array<>();
-        bike = new Bike(200, 100);
+        bike = new Bike(20, 100);
+        heal = new Heal(1900, 1000);
         winTrigger = new WinTrigger(58 * 32, 57 * 32);
         camera.position.set(320, 240, 0);
         camera.update();
@@ -111,6 +125,11 @@ public class GameScreen implements Screen {
             bike.interact(player);
             player.addItem(bike);
         }
+        if (heal != null && !heal.isCollected()
+            && player.getBounds().overlaps(heal.getBounds())) {
+            heal.interact(player);
+        }
+        collectCoins();
         player.keepInsideMap(MAP_WIDTH, MAP_HEIGHT);
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE) && player.canSprinkleFood()) {
             sprinkleFood();
@@ -122,6 +141,7 @@ public class GameScreen implements Screen {
             if (!crumb.isActive()) foodCrumbs.removeIndex(i);
         }
         spawnGeese(delta);
+        spawnCoins(delta);
         if (gooseGraceTimer <= 0) {
             for (int i = 0; i < geese.size; i++) {
                 Goose goose = geese.get(i);
@@ -153,17 +173,21 @@ public class GameScreen implements Screen {
             com.badlogic.gdx.math.Rectangle bounds = food.getBounds();
             shapes.rect(bounds.x, bounds.y, bounds.width, bounds.height);
         }
-        if (bike != null && !bike.isCollected()) {
-            Rectangle bounds = bike.getBounds();
-            shapes.setColor(Color.CYAN);
-            shapes.rect(bounds.x, bounds.y, bounds.width, bounds.height);
-        }
         shapes.end();
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
+        if (bike != null && !bike.isCollected()) {
+            Rectangle bounds = bike.getBounds();
+            batch.draw(bike.bikeIcon, bounds.x - 8, bounds.y - 8, 32, 32);
+        }
+        if (heal != null && !heal.isCollected()) {
+            Rectangle bounds = heal.getBounds();
+            batch.draw(heal.healIcon, bounds.x - 8, bounds.y - 8, 16, 16);
+        }
+        for (Coin coin : coins) coin.render(batch, coinIcon);
         winTrigger.render(batch);
-        player.render(batch);
         for (Goose goose : geese) goose.render(batch);
+        player.render(batch);
         batch.end();
         renderCollisionDebug();
         float healthRatio = (float) player.getHealth() / player.getMaxHealth();
@@ -176,6 +200,11 @@ public class GameScreen implements Screen {
         float barHeight = 16;
         float barX = uiWidth - barWidth - 20;
         float barY = uiHeight - 44;
+        float tuticonSize = 64f;
+        float gap = 8f;
+        float stackHeight = 3 * tuticonSize + 2 * gap;
+        float leftX = 16f;
+        float bottomY = (uiHeight - stackHeight) / 2f;
         shapes.setProjectionMatrix(uiViewport.getCamera().combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         shapes.setColor(Color.DARK_GRAY);
@@ -185,6 +214,12 @@ public class GameScreen implements Screen {
         shapes.end();
         batch.setProjectionMatrix(uiViewport.getCamera().combined);
         batch.begin();
+        if (SHOW_CONTROL_ICONS) {
+            batch.draw(throwIcon, leftX, bottomY, tuticonSize, tuticonSize);
+            batch.draw(pauseIcon, leftX, bottomY + tuticonSize + gap, tuticonSize, tuticonSize);
+            batch.draw(walkIcon, leftX, bottomY + 2 * (tuticonSize + gap),
+                tuticonSize, tuticonSize);
+        }
         batch.draw(inventoryTexture, 20, barY - 16, 316, 50);
         float inventoryX = 20;
         float inventoryY = barY - 16;
@@ -203,14 +238,11 @@ public class GameScreen implements Screen {
         font.draw(batch, "Health: " + player.getHealth() + " / " + player.getMaxHealth(), barX, barY + barHeight + 20);
         font.draw(batch, "Time: " + formatTimeRemaining(), 20, 20);
         font.draw(batch, "points: " + points, barX, 20);
-        if (player.getNearMiss() != 0) {
-            font.draw(batch, "near miss streak:" + player.getNearMiss(), barX, 60);
-        }
         batch.end();
     }
 
     private Texture getInventoryIcon(Interactable interactable) {{
-            if (interactable instanceof Bike) return bikeIcon;
+            if (interactable instanceof Bike) return bike.bikeIcon;
             if (interactable instanceof FoodItem) return foodIcon;
             return null;
         }
@@ -232,9 +264,6 @@ public class GameScreen implements Screen {
     public void resume() {
 
     }
-    public void collectBike() {
-
-    }
 
     @Override
     public void hide() {
@@ -247,6 +276,9 @@ public class GameScreen implements Screen {
         batch.dispose();
         shapes.dispose();
         font.dispose();
+        bike.bikeIcon.dispose();
+        heal.healIcon.dispose();
+        coinIcon.dispose();
         if (player != null) player.dispose();
         if (geese != null) for (Goose goose : geese) goose.dispose();
         if (mapManager != null) mapManager.dispose();
@@ -271,11 +303,19 @@ public class GameScreen implements Screen {
     }
 
     /** Formats the remaining countdown as minutes and two-digit seconds. */
-    public static String formatTimeRemaining() {
+    private String formatTimeRemaining() {
         int totalSeconds = (int) Math.ceil(timeRemaining);
         int minutes = totalSeconds / 60;
         int seconds = totalSeconds % 60;
         return minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+    }
+
+    public float getTimeRemaining() {
+        return timeRemaining;
+    }
+
+    public String getFormattedTimeRemaining() {
+        return formatTimeRemaining();
     }
 
     /** Creates a small scatter of food in front of the player. */
@@ -319,12 +359,64 @@ public class GameScreen implements Screen {
                 float angle = geese.size * 2.39996323f;
                 float spawnRadius = 42f;
                 geese.add(new Goose(lake.x + lake.width / 2f - 8 + MathUtils.cos(angle) * spawnRadius,
-                    lake.y + lake.height / 2f - 8 + MathUtils.sin(angle) * spawnRadius, 16, 16));
+                    lake.y + lake.height / 2f - 8 + MathUtils.sin(angle) * spawnRadius, 16, 8));
+            }
+        }
+    }
+
+    /** Adds a coin at a random clear tile on the Tiled path every few seconds. */
+    private void spawnCoins(float delta) {
+        if (coins.size >= MAX_COINS) return;
+        coinSpawnTimer += delta;
+        if (coinSpawnTimer < COIN_SPAWN_INTERVAL) return;
+        coinSpawnTimer -= COIN_SPAWN_INTERVAL;
+
+        for (int attempt = 0; attempt < 20; attempt++) {
+            float searchWidth = camera.viewportWidth + 128f;
+            float searchHeight = camera.viewportHeight + 128f;
+            Rectangle nearbyPaths = new Rectangle(
+                player.getX() + 16f - searchWidth / 2f,
+                player.getY() + 16f - searchHeight / 2f,
+                searchWidth,
+                searchHeight
+            );
+            com.badlogic.gdx.math.Vector2 position = mapManager.getRandomPathPosition(
+                COIN_SIZE, COIN_SIZE, nearbyPaths);
+            if (position == null) position = mapManager.getRandomPathPosition(COIN_SIZE, COIN_SIZE);
+            if (position == null) return;
+
+            Rectangle candidate = new Rectangle(position.x, position.y, COIN_SIZE, COIN_SIZE);
+            boolean tooCloseToExistingCoin = false;
+            for (Coin existing : coins) {
+                Rectangle bounds = existing.getBounds();
+                if (Math.abs(candidate.x - bounds.x) < 48 && Math.abs(candidate.y - bounds.y) < 48) {
+                    tooCloseToExistingCoin = true;
+                    break;
+                }
+            }
+            if (!tooCloseToExistingCoin) {
+                coins.add(new Coin(position.x, position.y));
+                return;
+            }
+        }
+    }
+
+    /** Collects coins on contact and removes them from the active world list. */
+    private void collectCoins() {
+        for (int i = coins.size - 1; i >= 0; i--) {
+            Coin coin = coins.get(i);
+            if (player.getBounds().overlaps(coin.getBounds())) {
+                coin.interact(player);
+                if (coin.isCollected()) coins.removeIndex(i);
             }
         }
     }
 
     public static void goosePoint(){
         points += 10;
+    }
+
+    public static void addCoin() {
+        points += 100;
     }
 }

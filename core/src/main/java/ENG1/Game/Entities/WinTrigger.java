@@ -10,7 +10,7 @@ public class WinTrigger implements Interactable{
     private final Rectangle bounds;
     private boolean collected;
     private final Texture texture =
-        new Texture(Gdx.files.internal("original assets/gooseSprite.png"));
+        new Texture(Gdx.files.internal("original assets/winTrigger.png"));
 
     public void render(SpriteBatch batch) {
         batch.draw(texture, bounds.x, bounds.y, 32, 32);

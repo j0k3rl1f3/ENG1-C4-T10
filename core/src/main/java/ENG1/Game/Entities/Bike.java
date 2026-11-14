@@ -1,11 +1,15 @@
 package ENG1.Game.Entities;
 
 import ENG1.Game.Managers.Interactable;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.Rectangle;
+
+import static com.badlogic.gdx.Gdx.files;
 
 public class Bike implements Interactable{
     private final Rectangle bounds;
     private boolean collected;
+    public final Texture bikeIcon = new Texture(files.internal("bikeIcon.png"));
 
     public Bike(float x, float y) {
         bounds = new Rectangle(x, y, 16, 16);
