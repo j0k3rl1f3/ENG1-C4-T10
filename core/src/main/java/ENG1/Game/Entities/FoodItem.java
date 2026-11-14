@@ -1,4 +1,4 @@
-package ENG1.Game.Entitys;
+package ENG1.Game.Entities;
 
 import ENG1.Game.Managers.Interactable;
 import com.badlogic.gdx.math.Rectangle;

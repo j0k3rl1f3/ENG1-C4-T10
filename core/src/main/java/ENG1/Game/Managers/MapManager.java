@@ -11,6 +11,8 @@ import com.badlogic.gdx.utils.Array;
 
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.GridPoint2;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
 
 /** Loads, renders, and queries collision data for a tiled map. */
 public class MapManager {
@@ -142,6 +144,29 @@ public class MapManager {
     /** @return true if the supplied bounds overlap the painted {@code Muddy} layer */
     public boolean isMuddy(Rectangle rect) {
         return overlapsLayer("Muddy", rect);
+    }
+
+    /**
+     * Picks a random open position from a painted cell on the Tiled {@code Path} layer.
+     * The returned rectangle footprint is kept clear of map collision layers.
+     */
+    public Vector2 getRandomPathPosition(float objectWidth, float objectHeight) {
+        TiledMapTileLayer pathLayer = getTileLayer("Path");
+        if (pathLayer == null || pathLayer.getWidth() == 0 || pathLayer.getHeight() == 0) return null;
+
+        float tileWidth = pathLayer.getTileWidth();
+        float tileHeight = pathLayer.getTileHeight();
+        for (int attempt = 0; attempt < 1000; attempt++) {
+            int cellX = MathUtils.random(pathLayer.getWidth() - 1);
+            int cellY = MathUtils.random(pathLayer.getHeight() - 1);
+            if (pathLayer.getCell(cellX, cellY) == null) continue;
+
+            float x = cellX * tileWidth + (tileWidth - objectWidth) / 2f;
+            float y = cellY * tileHeight + (tileHeight - objectHeight) / 2f;
+            Rectangle candidate = new Rectangle(x, y, objectWidth, objectHeight);
+            if (!checkCollision(candidate)) return new Vector2(x, y);
+        }
+        return null;
     }
 
     /** Draws red-outline equivalents of every map area that blocks the player. */

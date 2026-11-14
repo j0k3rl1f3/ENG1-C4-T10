@@ -1,5 +1,5 @@
 package ENG1.Game.Screens;
-import ENG1.Game.Entitys.*;
+import ENG1.Game.Entities.*;
 import ENG1.Game.Main;
 import ENG1.Game.Managers.Interactable;
 import ENG1.Game.Managers.MapFeature;
@@ -26,10 +26,13 @@ public class GameScreen implements Screen {
     private static final float MAP_WIDTH = 2048f;
     private static final float MAP_HEIGHT = 2048f;
     private static final float GOOSE_SPAWN_INTERVAL = 5f;
+    private static final float COIN_SPAWN_INTERVAL = 2.5f;
     private static final float GOOSE_GRACE_PERIOD = 4f;
     private static final float GAME_DURATION_SECONDS = 5 * 60f;
     private static final float LAKE_ACTIVATION_DISTANCE = 280f;
     private static final int MAX_GEESE = 50;
+    private static final int MAX_COINS = 18;
+    private static final float COIN_SIZE = 16f;
     private static final boolean SHOW_COLLISION_DEBUG = false;
     private final Main game;
     private WinTrigger winTrigger;;
@@ -43,6 +46,7 @@ public class GameScreen implements Screen {
     private final Array<Coin> coins = new Array<>();
     private final Rectangle cameraBounds = new Rectangle();
     private float gooseGraceTimer;
+    private float coinSpawnTimer;
     private float timeRemaining;
     public static int points;
     final private SpriteBatch batch = new SpriteBatch();
@@ -55,6 +59,8 @@ public class GameScreen implements Screen {
     private final TextureRegion inventoryBar = new TextureRegion(inventoryTexture, 0,0,632,100);
     private final Texture bikeIcon = new Texture(files.internal("assets/bikeIcon.png"));
     private final Texture foodIcon = new Texture(files.internal("assets/foodIcon.png"));
+    private final Texture coinIcon = new Texture(
+        files.internal("Chronicles of the Realm - Coins Pack (16x16)/16x16/Coin_Gold_0.png"));
 
     public GameScreen(Main game) {
         this.game = game;
@@ -70,6 +76,8 @@ public class GameScreen implements Screen {
         player.unlockFoodSprinkler();
         points = 0;
         geese = new com.badlogic.gdx.utils.Array<>();
+        coins.clear();
+        coinSpawnTimer = COIN_SPAWN_INTERVAL;
         gooseGraceTimer = GOOSE_GRACE_PERIOD;
         timeRemaining = GAME_DURATION_SECONDS;
         foodCrumbs.clear();
@@ -112,6 +120,7 @@ public class GameScreen implements Screen {
             bike.interact(player);
             player.addItem(bike);
         }
+        collectCoins();
         player.keepInsideMap(MAP_WIDTH, MAP_HEIGHT);
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE) && player.canSprinkleFood()) {
             sprinkleFood();
@@ -123,6 +132,7 @@ public class GameScreen implements Screen {
             if (!crumb.isActive()) foodCrumbs.removeIndex(i);
         }
         spawnGeese(delta);
+        spawnCoins(delta);
         if (gooseGraceTimer <= 0) {
             for (int i = 0; i < geese.size; i++) {
                 Goose goose = geese.get(i);
@@ -154,14 +164,14 @@ public class GameScreen implements Screen {
             com.badlogic.gdx.math.Rectangle bounds = food.getBounds();
             shapes.rect(bounds.x, bounds.y, bounds.width, bounds.height);
         }
-        if (bike != null && !bike.isCollected()) {
-            Rectangle bounds = bike.getBounds();
-            shapes.setColor(Color.CYAN);
-            shapes.rect(bounds.x, bounds.y, bounds.width, bounds.height);
-        }
         shapes.end();
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
+        for (Coin coin : coins) coin.render(batch, coinIcon);
+        if (bike != null && !bike.isCollected()) {
+            Rectangle bounds = bike.getBounds();
+            batch.draw(bikeIcon, bounds.x - 8, bounds.y - 8, 32, 32);
+        }
         winTrigger.render(batch);
         player.render(batch);
         for (Goose goose : geese) goose.render(batch);
@@ -169,7 +179,7 @@ public class GameScreen implements Screen {
         renderCollisionDebug();
         float healthRatio = (float) player.getHealth() / player.getMaxHealth();
 
-        // Draw the HUD in screen coordinates so it stays fixed while the world camera follows the player.
+        /** Draw the HUD in screen coordinates so it stays fixed while the world camera follows the player. **/
         uiViewport.apply();
         float uiWidth = uiViewport.getWorldWidth();
         float uiHeight = uiViewport.getWorldHeight();
@@ -248,6 +258,7 @@ public class GameScreen implements Screen {
         batch.dispose();
         shapes.dispose();
         font.dispose();
+        coinIcon.dispose();
         if (player != null) player.dispose();
         if (geese != null) for (Goose goose : geese) goose.dispose();
         if (mapManager != null) mapManager.dispose();
@@ -321,6 +332,46 @@ public class GameScreen implements Screen {
                 float spawnRadius = 42f;
                 geese.add(new Goose(lake.x + lake.width / 2f - 8 + MathUtils.cos(angle) * spawnRadius,
                     lake.y + lake.height / 2f - 8 + MathUtils.sin(angle) * spawnRadius, 16, 16));
+            }
+        }
+    }
+
+    /** Adds one coin at a random clear tile on the painted path at each spawn interval. */
+    private void spawnCoins(float delta) {
+        if (coins.size >= MAX_COINS) return;
+        coinSpawnTimer += delta;
+        if (coinSpawnTimer < COIN_SPAWN_INTERVAL) return;
+        coinSpawnTimer -= COIN_SPAWN_INTERVAL;
+
+        for (int attempt = 0; attempt < 20; attempt++) {
+            com.badlogic.gdx.math.Vector2 position = mapManager.getRandomPathPosition(COIN_SIZE, COIN_SIZE);
+            if (position == null) return;
+            Rectangle candidate = new Rectangle(position.x, position.y, COIN_SIZE, COIN_SIZE);
+            boolean tooClose = false;
+            for (Coin coin : coins) {
+                Rectangle existing = coin.getBounds();
+                if (candidate.x < existing.x + existing.width + 48
+                    && candidate.x + candidate.width + 48 > existing.x
+                    && candidate.y < existing.y + existing.height + 48
+                    && candidate.y + candidate.height + 48 > existing.y) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            if (!tooClose) {
+                coins.add(new Coin(position.x, position.y));
+                return;
+            }
+        }
+    }
+
+    /** Collects coins the player touches and updates the existing points counter. */
+    private void collectCoins() {
+        for (int i = coins.size - 1; i >= 0; i--) {
+            Coin coin = coins.get(i);
+            if (player.getBounds().overlaps(coin.getBounds())) {
+                coin.interact(player);
+                if (coin.isCollected()) coins.removeIndex(i);
             }
         }
     }

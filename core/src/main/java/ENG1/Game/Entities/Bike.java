@@ -1,21 +1,24 @@
-package ENG1.Game.Entitys;
+package ENG1.Game.Entities;
 
 import ENG1.Game.Managers.Interactable;
-import ENG1.Game.Screens.GameScreen;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.Rectangle;
 
-public class Coin implements Interactable{
+import static com.badlogic.gdx.Gdx.files;
+
+public class Bike implements Interactable{
     private final Rectangle bounds;
     private boolean collected;
+    private final Texture bikeIcon = new Texture(files.internal("bikeIcon.png"));
 
-    public Coin(float x, float y) {
+    public Bike(float x, float y) {
         bounds = new Rectangle(x, y, 16, 16);
     }
 
     @Override
     public void interact(Player player) {
         if (!collected) {
-            Player.collectCoin();
+            Player.collectBike();
             collected = true;
         }
     }
@@ -32,3 +35,4 @@ public class Coin implements Interactable{
     }
 
 }
+

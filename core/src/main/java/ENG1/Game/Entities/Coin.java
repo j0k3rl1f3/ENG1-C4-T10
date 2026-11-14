@@ -1,21 +1,23 @@
-package ENG1.Game.Entitys;
+package ENG1.Game.Entities;
 
 import ENG1.Game.Managers.Interactable;
-import ENG1.Game.Screens.GameScreen;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 
-public class Bike implements Interactable{
+public class Coin implements Interactable{
     private final Rectangle bounds;
     private boolean collected;
 
-    public Bike(float x, float y) {
+
+    public Coin(float x, float y) {
         bounds = new Rectangle(x, y, 16, 16);
     }
 
     @Override
     public void interact(Player player) {
         if (!collected) {
-            Player.collectBike();
+            Player.collectCoin();
             collected = true;
         }
     }
@@ -31,5 +33,9 @@ public class Bike implements Interactable{
         return collected;
     }
 
-}
+    /** Draws this coin with the shared coin texture owned by the game screen. */
+    public void render(SpriteBatch batch, Texture coinIcon) {
+        batch.draw(coinIcon, bounds.x, bounds.y, bounds.width, bounds.height);
+    }
 
+}
