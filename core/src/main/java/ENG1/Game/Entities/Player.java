@@ -11,14 +11,16 @@ import com.badlogic.gdx.utils.Array;
 import ENG1.Game.Managers.Interactable;
 import ENG1.Game.Managers.MapFeature;
 import ENG1.Game.Managers.MapManager;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 
 /** The user-controlled character, including movement, health, inventory, and food-sprinkler state. */
 public class Player extends Entity {
     private static final int MAX_HEALTH = 100;
-    private int health = MAX_HEALTH;
+    public static int health = MAX_HEALTH;
     private final Array<Interactable> inventory = new Array<>();
     private final Vector2 facing = new Vector2(1, 0);
+    private float invulnerabilityTime;
     private static final float FOOD_COOLDOWN = 3f;
     private boolean hasFoodSprinkler;
     private float foodCooldown;
@@ -66,7 +68,9 @@ public class Player extends Entity {
     @Override
     public void render(SpriteBatch batch) {
         TextureRegion frame = getCurrentAnimation().getKeyFrame(animationTime, true);
-        batch.draw(frame, position.x  - (0.25f * DRAW_SIZE), position.y  - (0.25f * DRAW_SIZE), DRAW_SIZE, DRAW_SIZE);
+        float drawX = position.x + (getWidth() - DRAW_SIZE) / 2f;
+        float drawY = position.y + (getHeight() - DRAW_SIZE) / 2f;
+        batch.draw(frame, drawX, drawY, DRAW_SIZE, DRAW_SIZE);
     }
     @Override
     public void dispose() {
@@ -115,6 +119,7 @@ public class Player extends Entity {
      */
     public void update(float delta, Array<Goose> geese, Array<MapFeature> mapFeatures, MapManager mapManager) {
         foodCooldown = Math.max(0, foodCooldown - delta);
+        invulnerabilityTime = Math.max(0, invulnerabilityTime - delta);
         if (health <= 0) return;
         velocity.set(0, 0);
         if (Gdx.input.isKeyPressed(Input.Keys.LEFT) || Gdx.input.isKeyPressed(Input.Keys.A)) velocity.x = -MOVE_SPEED;
@@ -130,17 +135,19 @@ public class Player extends Entity {
             velocity.nor().scl(MOVE_SPEED * speedMultiplier);
         }
         float previousX = position.x;
+        Rectangle previousBounds = copyBounds(getBounds());
         position.x += velocity.x * delta;
         getBounds().setX(position.x);
-        if (overlapsSolid(geese, mapFeatures, mapManager)) {
+        if (overlapsWorld(mapFeatures, mapManager) || increasesGooseOverlap(previousBounds, geese)) {
             position.x = previousX;
             getBounds().setX(position.x);
         }
 
         float previousY = position.y;
+        previousBounds.set(getBounds());
         position.y += velocity.y * delta;
         getBounds().setY(position.y);
-        if (overlapsSolid(geese, mapFeatures, mapManager)) {
+        if (overlapsWorld(mapFeatures, mapManager) || increasesGooseOverlap(previousBounds, geese)) {
             position.y = previousY;
             getBounds().setY(position.y);
         }
@@ -150,13 +157,7 @@ public class Player extends Entity {
         return false;
     } **/
 
-    private boolean overlapsSolid(Array<Goose> geese, Array<MapFeature> mapFeatures, MapManager mapManager) {
-        if (geese != null) {
-            for (int i = 0; i < geese.size; i++) {
-                Goose goose = geese.get(i);
-                if (getBounds().overlaps(goose.getBounds())) return true;
-            }
-        }
+    private boolean overlapsWorld(Array<MapFeature> mapFeatures, MapManager mapManager) {
         // With a Tiled map, use its exact painted collision cells. MapFeature lake rectangles
         // are retained only for goose spawning and may cover grass inside an irregular shoreline.
         if (mapFeatures != null && mapManager == null) {
@@ -166,6 +167,30 @@ public class Player extends Entity {
         }
         if (mapManager != null && mapManager.checkCollision(getBounds())) return true;
         return false;
+    }
+
+    /** Allows movement that separates the player from a goose, but blocks movement deeper into it. */
+    private boolean increasesGooseOverlap(Rectangle previousBounds, Array<Goose> geese) {
+        if (geese == null) return false;
+        for (Goose goose : geese) {
+            Rectangle gooseBounds = goose.getBounds();
+            if (overlapArea(getBounds(), gooseBounds) > overlapArea(previousBounds, gooseBounds) + 0.001f) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private float overlapArea(Rectangle first, Rectangle second) {
+        float overlapWidth = Math.max(0, Math.min(first.x + first.width, second.x + second.width)
+            - Math.max(first.x, second.x));
+        float overlapHeight = Math.max(0, Math.min(first.y + first.height, second.y + second.height)
+            - Math.max(first.y, second.y));
+        return overlapWidth * overlapHeight;
+    }
+
+    private Rectangle copyBounds(Rectangle bounds) {
+        return new Rectangle(bounds.x, bounds.y, bounds.width, bounds.height);
     }
 
     public void takeDamage() {
@@ -233,7 +258,23 @@ public class Player extends Entity {
     }
 
     public static void collectBike() {
-        MOVE_SPEED += 5f;
+        MOVE_SPEED += 10f;
+    }
+    public static void collectHeal(){
+        health = MAX_HEALTH;
+    }
+
+    /** Adds the points awarded by a collected coin. */
+    public static void collectCoin() {
+        GameScreen.addCoin();
+    }
+
+    public float getInvulnerabilityTime() {
+        return invulnerabilityTime;
+    }
+
+    public void setInvulnerabilityTime(float seconds) {
+        invulnerabilityTime = Math.max(0, seconds);
     }
     /**
      * Starts the three-second cooldown after a food sprinkle is created.

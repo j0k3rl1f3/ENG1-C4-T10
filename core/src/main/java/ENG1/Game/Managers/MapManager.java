@@ -151,18 +151,35 @@ public class MapManager {
      * The returned rectangle footprint is kept clear of map collision layers.
      */
     public Vector2 getRandomPathPosition(float objectWidth, float objectHeight) {
+        return getRandomPathPosition(objectWidth, objectHeight, null);
+    }
+
+    /** Picks a random valid path position within a preferred world-space area when possible. */
+    public Vector2 getRandomPathPosition(float objectWidth, float objectHeight, Rectangle preferredArea) {
         TiledMapTileLayer pathLayer = getTileLayer("Path");
         if (pathLayer == null || pathLayer.getWidth() == 0 || pathLayer.getHeight() == 0) return null;
 
         float tileWidth = pathLayer.getTileWidth();
         float tileHeight = pathLayer.getTileHeight();
+        int minX = 0;
+        int maxX = pathLayer.getWidth() - 1;
+        int minY = 0;
+        int maxY = pathLayer.getHeight() - 1;
+        if (preferredArea != null) {
+            minX = Math.max(0, (int) Math.floor(preferredArea.x / tileWidth));
+            maxX = Math.min(maxX, (int) Math.floor((preferredArea.x + preferredArea.width) / tileWidth));
+            minY = Math.max(0, (int) Math.floor(preferredArea.y / tileHeight));
+            maxY = Math.min(maxY, (int) Math.floor((preferredArea.y + preferredArea.height) / tileHeight));
+            if (minX > maxX || minY > maxY) return null;
+        }
         for (int attempt = 0; attempt < 1000; attempt++) {
-            int cellX = MathUtils.random(pathLayer.getWidth() - 1);
-            int cellY = MathUtils.random(pathLayer.getHeight() - 1);
+            int cellX = MathUtils.random(minX, maxX);
+            int cellY = MathUtils.random(minY, maxY);
             if (pathLayer.getCell(cellX, cellY) == null) continue;
 
             float x = cellX * tileWidth + (tileWidth - objectWidth) / 2f;
             float y = cellY * tileHeight + (tileHeight - objectHeight) / 2f;
+            if (preferredArea != null && !preferredArea.contains(x + objectWidth / 2f, y + objectHeight / 2f)) continue;
             Rectangle candidate = new Rectangle(x, y, objectWidth, objectHeight);
             if (!checkCollision(candidate)) return new Vector2(x, y);
         }

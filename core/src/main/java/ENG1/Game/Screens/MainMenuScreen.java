@@ -80,7 +80,8 @@ public class MainMenuScreen implements Screen {
             Gdx.app.exit();
             return true;
         } else if (settingsBounds.contains(clickPosition)) {
-            // Settings will be added later.
+            game.showSettingsMenu();
+            return true;
         }
         return false;
     }

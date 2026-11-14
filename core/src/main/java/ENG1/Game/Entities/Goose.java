@@ -37,7 +37,7 @@ public class Goose extends Entity{
     }
 
     public boolean isTouchingPlayer(Player player) {
-        return getBounds().overlaps(player.getPlayerHitBox());
+        return getBounds().overlaps(player.getBounds());
     }
 
     /** Draws the appropriate idle, running, or attack animation frame. */
@@ -55,7 +55,9 @@ public class Goose extends Entity{
             animationTime,
             current != flapAnimation
         );
-        batch.draw(frame, position.x - (0.5f * DRAW_SIZE), position.y  - (0.5f * DRAW_SIZE), DRAW_SIZE, DRAW_SIZE);
+        float drawX = position.x + (getWidth() - DRAW_SIZE) / 2f;
+        float drawY = position.y + (getHeight() - DRAW_SIZE) / 2f;
+        batch.draw(frame, drawX, drawY, DRAW_SIZE, DRAW_SIZE);
     }
 
     /** Releases the textures used by this goose's animations. */
@@ -153,6 +155,9 @@ public class Goose extends Entity{
                              Array<MapFeature> mapFeatures, MapManager mapManager) {
         if (amount == 0) return false;
         float previous = horizontal ? position.x : position.y;
+        com.badlogic.gdx.math.Rectangle bounds = getBounds();
+        com.badlogic.gdx.math.Rectangle previousBounds = new com.badlogic.gdx.math.Rectangle(
+            bounds.x, bounds.y, bounds.width, bounds.height);
         if (horizontal) {
             position.x += amount;
             getBounds().setX(position.x);
@@ -162,7 +167,9 @@ public class Goose extends Entity{
         }
 
         boolean touchingPlayer = isTouchingPlayer(player);
-        if (overlapsOtherGoose(geese) || overlapsSolidFeature(mapFeatures)
+        boolean increasesPlayerOverlap = overlapArea(getBounds(), player.getBounds())
+            > overlapArea(previousBounds, player.getBounds()) + 0.001f;
+        if (increasesPlayerOverlap || overlapsOtherGoose(geese) || overlapsSolidFeature(mapFeatures)
             || (mapManager != null && mapManager.checkGooseCollision(getBounds()))) {
             if (horizontal) {
                 position.x = previous;
@@ -173,6 +180,14 @@ public class Goose extends Entity{
             }
         }
         return touchingPlayer;
+    }
+
+    private float overlapArea(com.badlogic.gdx.math.Rectangle first, com.badlogic.gdx.math.Rectangle second) {
+        float overlapWidth = Math.max(0, Math.min(first.x + first.width, second.x + second.width)
+            - Math.max(first.x, second.x));
+        float overlapHeight = Math.max(0, Math.min(first.y + first.height, second.y + second.height)
+            - Math.max(first.y, second.y));
+        return overlapWidth * overlapHeight;
     }
 
     private boolean overlapsOtherGoose(Array<Goose> geese) {

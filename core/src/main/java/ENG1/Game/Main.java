@@ -1,8 +1,5 @@
 package ENG1.Game;
-import ENG1.Game.Screens.GameScreen;
-import ENG1.Game.Screens.MainMenuScreen;
-import ENG1.Game.Screens.PauseScreen;
-import ENG1.Game.Screens.WinScreen;
+import ENG1.Game.Screens.*;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Texture;
@@ -33,6 +30,12 @@ public class Main extends Game {
         this.pausedGame = pausedGame;
         setScreen(new PauseScreen(this, pausedGame));
     }
+    public void showSettingsMenu(){
+        Screen mainMenu = getScreen();
+        setScreen(new SettingsScreen(this));
+        mainMenu.dispose();
+
+    }
 
     /** Restores a paused game and releases the menu which was displaying above it. */
     public void resumeGame(GameScreen gameScreen) {
@@ -56,7 +59,8 @@ public class Main extends Game {
     }
 
     private void showEndScreen(GameScreen completedGame, String message) {
-        setScreen(new WinScreen(this, message, GameScreen.points, GameScreen.timeRemaining, GameScreen.formatTimeRemaining()));
+        setScreen(new WinScreen(this, message, GameScreen.points,
+            completedGame.getTimeRemaining(), completedGame.getFormattedTimeRemaining()));
         completedGame.dispose();
     }
     /** Starts a fresh game and releases the menu that launched it. */
@@ -67,9 +71,13 @@ public class Main extends Game {
     }
 
     public void showMainMenu() {
-        Screen winScreen = getScreen();
+        Screen currentScreen = getScreen();
         setScreen(new MainMenuScreen(this));
-        winScreen.dispose();
+        if (currentScreen != null) currentScreen.dispose();
+        if (pausedGame != null) {
+            pausedGame.dispose();
+            pausedGame = null;
+        }
     }
 
     @Override

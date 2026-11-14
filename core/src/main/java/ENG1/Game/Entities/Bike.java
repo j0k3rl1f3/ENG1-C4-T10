@@ -9,7 +9,7 @@ import static com.badlogic.gdx.Gdx.files;
 public class Bike implements Interactable{
     private final Rectangle bounds;
     private boolean collected;
-    private final Texture bikeIcon = new Texture(files.internal("bikeIcon.png"));
+    public final Texture bikeIcon = new Texture(files.internal("bikeIcon.png"));
 
     public Bike(float x, float y) {
         bounds = new Rectangle(x, y, 16, 16);
