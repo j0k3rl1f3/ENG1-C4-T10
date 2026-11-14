@@ -94,10 +94,18 @@ public class Goose extends Entity{
 
         FoodCrumb crumb = findClosestCrumb(crumbs);
         boolean distracted = crumb != null;
-        Vector2 target = distracted ? crumb.getPosition() : player.position;
+        Vector2 target = new Vector2();
+        if (distracted) {
+            target = crumb.getPosition();
+        } else {
+            // Make sure goose is targeted to the centre of the player
+            target.x = Math.round(player.position.x + (0.5f * player.getWidth()));
+            target.y = Math.round(player.position.y + (0.5f * player.getHeight()));
+        }
+
         movement.set(target).sub(position);
         float distance = movement.len();
-        boolean touchingPlayer = getBounds().overlaps(player.getBounds());
+        boolean touchingPlayer = getBounds().overlaps(player.getPlayerHitBox());
         if (distance > 1f) {
             movement.scl(Math.min(SPEED * delta, distance) / distance);
             touchingPlayer |= moveAxis(movement.x, true, player, geese, mapFeatures, mapManager);
@@ -109,9 +117,12 @@ public class Goose extends Entity{
         }
         attackTimer -= delta;
         if (attackTimer <= 0 && touchingPlayer) {
-            player.takeDamage(DAMAGE);
             attackTimer = ATTACK_COOLDOWN;
             flapTime = flapAnimation.getAnimationDuration();
+            if (player.getInvulnerabilityTime() == 0) {
+                player.setInvulnerabilityTime(1);
+                player.takeDamage(DAMAGE);
+            }
         }
     }
 
@@ -144,8 +155,8 @@ public class Goose extends Entity{
             getBounds().setY(position.y);
         }
 
-        boolean touchingPlayer = getBounds().overlaps(player.getBounds());
-        if (touchingPlayer || overlapsOtherGoose(geese) || overlapsSolidFeature(mapFeatures)
+        boolean touchingPlayer = getBounds().overlaps(player.getPlayerHitBox());
+        if (overlapsOtherGoose(geese) || overlapsSolidFeature(mapFeatures)
             || (mapManager != null && mapManager.checkGooseCollision(getBounds()))) {
             if (horizontal) {
                 position.x = previous;

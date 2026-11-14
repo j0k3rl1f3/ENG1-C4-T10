@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import ENG1.Game.Managers.Interactable;
 import ENG1.Game.Managers.MapFeature;
@@ -38,6 +39,8 @@ public class Player extends Entity {
     private Direction direction = Direction.RIGHT;
     private boolean moving;
     private float animationTime;
+    private Rectangle playerHitBox;
+    private float invulnerabilityTime = 0f;
 
     /**
      * Creates a player at the supplied world position with the supplied collision size.
@@ -56,6 +59,9 @@ public class Player extends Entity {
         walkUp = makeAnimation(16, 4, WALK_FRAME_DURATION);
         walkRight = makeAnimation(20, 4, WALK_FRAME_DURATION);
         walkLeft = makeAnimation(24, 4, WALK_FRAME_DURATION);
+        // Not going to be attacked on frame 1, so x=0 and y=0.
+        // Updates every frame to the player position after
+        playerHitBox = new Rectangle(0, 0, 3, 3);
     }
 
     /**
@@ -72,20 +78,23 @@ public class Player extends Entity {
         playerSheet.dispose();
     }
 
-    /**
-     * @return player's left world coordinate
-     */
-    public float getX() {
-        return position.x;
-    }
+    /** @return player's left world coordinate */
+    public float getX() { return position.x; }
 
-    /**
-     * @return player's bottom world coordinate
-     */
+    /** @return player's bottom world coordinate */
     public float getY() {
         return position.y;
     }
 
+    /** @return player's hitbox */
+    public Rectangle getPlayerHitBox() {
+        return playerHitBox;
+    }
+
+    /** @return player's invulnerability time */
+    public float getInvulnerabilityTime() { return invulnerabilityTime; }
+
+    public void setInvulnerabilityTime(float newTime) { invulnerabilityTime = newTime; }
 
     @Override
     public void update(float delta) {
@@ -130,18 +139,27 @@ public class Player extends Entity {
         float previousX = position.x;
         position.x += velocity.x * delta;
         getBounds().setX(position.x);
+        getPlayerHitBox().setX(Math.round(position.x - 1 + (0.5f * this.getWidth())));
         if (overlapsSolid(geese, mapFeatures, mapManager)) {
             position.x = previousX;
             getBounds().setX(position.x);
+            getPlayerHitBox().setX(Math.round(position.x - 1 + (0.5f * this.getWidth())));
         }
 
         float previousY = position.y;
         position.y += velocity.y * delta;
         getBounds().setY(position.y);
+        getPlayerHitBox().setY(Math.round(position.y - 1 + (0.5f * this.getHeight())));
         if (overlapsSolid(geese, mapFeatures, mapManager)) {
             position.y = previousY;
             getBounds().setY(position.y);
+            getPlayerHitBox().setY(Math.round(position.y - 1 + (0.5f * this.getHeight())));
         }
+        // Make sure invulnerability can run out
+        setInvulnerabilityTime(
+            Math.max(0f, getInvulnerabilityTime() - delta)
+        );
+
     }
     /** for future invis cloak
     public boolean isInvisible() {
@@ -149,12 +167,14 @@ public class Player extends Entity {
     } **/
 
     private boolean overlapsSolid(Array<Goose> geese, Array<MapFeature> mapFeatures, MapManager mapManager) {
-        if (geese != null) {
-            for (int i = 0; i < geese.size; i++) {
-                Goose goose = geese.get(i);
-                if (getBounds().overlaps(goose.getBounds())) return true;
-            }
-        }
+
+//        if (geese != null) {
+//            for (int i = 0; i < geese.size; i++) {
+//                Goose goose = geese.get(i);
+//                if (getPlayerHitBox().overlaps(goose.getBounds())) return true;
+//            }
+//        }
+
         // With a Tiled map, use its exact painted collision cells. MapFeature lake rectangles
         // are retained only for goose spawning and may cover grass inside an irregular shoreline.
         if (mapFeatures != null && mapManager == null) {

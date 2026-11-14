@@ -9,6 +9,8 @@ public abstract class Entity {
     protected Vector2 position;
     protected Vector2 velocity;
     private final Rectangle bound;
+    private final float width;
+    private final float height;
 
     /**
      * Creates an entity at the supplied world position.
@@ -18,10 +20,12 @@ public abstract class Entity {
      * @param width collision width in world units
      * @param height collision height in world units
      */
-    public Entity(float x, float y, float width, float height){
+    public Entity(float x, float y, float width, float height) {
         this.position = new Vector2(x,y);
         this.velocity = new Vector2(0,0);
         this.bound = new Rectangle(x, y, width, height);
+        this.width = width;
+        this.height = height;
     }
 
     /** Updates this entity for one rendered frame. @param alpha elapsed time in seconds */
@@ -34,6 +38,12 @@ public abstract class Entity {
     public Rectangle getBounds(){
         return bound;
     }
+
+    /** @return the rectangles width */
+    public float getWidth() { return width; }
+
+    /** @return the rectangles height */
+    public float getHeight() { return height; }
 
     /** Releases resources owned by this entity. Subclasses override when needed. */
     public void dispose() { }
