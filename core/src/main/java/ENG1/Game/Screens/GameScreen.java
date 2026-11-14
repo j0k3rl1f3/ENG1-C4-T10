@@ -42,7 +42,7 @@ public class GameScreen implements Screen {
     private final Array<FoodCrumb> foodCrumbs = new Array<>();
     private final Rectangle cameraBounds = new Rectangle();
     private float gooseGraceTimer;
-    private float timeRemaining;
+    public static float timeRemaining;
     public static int points;
     final private SpriteBatch batch = new SpriteBatch();
     final private OrthographicCamera camera = new OrthographicCamera(320, 240);
@@ -203,6 +203,9 @@ public class GameScreen implements Screen {
         font.draw(batch, "Health: " + player.getHealth() + " / " + player.getMaxHealth(), barX, barY + barHeight + 20);
         font.draw(batch, "Time: " + formatTimeRemaining(), 20, 20);
         font.draw(batch, "points: " + points, barX, 20);
+        if (player.getNearMiss() != 0) {
+            font.draw(batch, "near miss streak:" + player.getNearMiss(), barX, 60);
+        }
         batch.end();
     }
 
@@ -268,7 +271,7 @@ public class GameScreen implements Screen {
     }
 
     /** Formats the remaining countdown as minutes and two-digit seconds. */
-    private String formatTimeRemaining() {
+    public static String formatTimeRemaining() {
         int totalSeconds = (int) Math.ceil(timeRemaining);
         int minutes = totalSeconds / 60;
         int seconds = totalSeconds % 60;

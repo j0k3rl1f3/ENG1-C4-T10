@@ -11,6 +11,7 @@ import ENG1.Game.Managers.Interactable;
 import ENG1.Game.Managers.MapFeature;
 import ENG1.Game.Managers.MapManager;
 import com.badlogic.gdx.math.Vector2;
+import ENG1.Game.Screens.GameScreen;
 
 /** The user-controlled character, including movement, health, inventory, and food-sprinkler state. */
 public class Player extends Entity {
@@ -40,7 +41,11 @@ public class Player extends Entity {
     private boolean moving;
     private float animationTime;
     private Rectangle playerHitBox;
+    private Rectangle playerNearMissBox;
     private float invulnerabilityTime = 0f;
+    private int nearMiss = 0;
+    private float nearMissTimer;
+    private boolean gooseHit = false;
 
     /**
      * Creates a player at the supplied world position with the supplied collision size.
@@ -61,7 +66,8 @@ public class Player extends Entity {
         walkLeft = makeAnimation(24, 4, WALK_FRAME_DURATION);
         // Not going to be attacked on frame 1, so x=0 and y=0.
         // Updates every frame to the player position after
-        playerHitBox = new Rectangle(0, 0, 3, 3);
+        playerHitBox = new Rectangle(0, 0, 2, 2);
+        playerNearMissBox = new Rectangle(0, 0, 128, 128);
     }
 
     /**
@@ -86,15 +92,23 @@ public class Player extends Entity {
         return position.y;
     }
 
-    /** @return player's hitbox */
+    /** @return player's hitbox and near miss box */
     public Rectangle getPlayerHitBox() {
         return playerHitBox;
+    }
+    public Rectangle getPlayerNearMissBox() {
+        return playerNearMissBox;
     }
 
     /** @return player's invulnerability time */
     public float getInvulnerabilityTime() { return invulnerabilityTime; }
 
     public void setInvulnerabilityTime(float newTime) { invulnerabilityTime = newTime; }
+
+    /** @return player's near miss score */
+    public int getNearMiss() { return nearMiss; }
+
+    public void setGooseHit(boolean hit) { gooseHit = hit; }
 
     @Override
     public void update(float delta) {
@@ -140,26 +154,52 @@ public class Player extends Entity {
         position.x += velocity.x * delta;
         getBounds().setX(position.x);
         getPlayerHitBox().setX(Math.round(position.x - 1 + (0.5f * this.getWidth())));
+        getPlayerNearMissBox().setX(Math.round(position.x - 64 + (0.5f * this.getWidth())));
         if (overlapsSolid(geese, mapFeatures, mapManager)) {
             position.x = previousX;
             getBounds().setX(position.x);
             getPlayerHitBox().setX(Math.round(position.x - 1 + (0.5f * this.getWidth())));
+            getPlayerNearMissBox().setX(Math.round(position.x - 64 + (0.5f * this.getWidth())));
         }
 
         float previousY = position.y;
         position.y += velocity.y * delta;
         getBounds().setY(position.y);
         getPlayerHitBox().setY(Math.round(position.y - 1 + (0.5f * this.getHeight())));
+        getPlayerNearMissBox().setY(Math.round(position.y - 64 + (0.5f * this.getHeight())));
         if (overlapsSolid(geese, mapFeatures, mapManager)) {
             position.y = previousY;
             getBounds().setY(position.y);
             getPlayerHitBox().setY(Math.round(position.y - 1 + (0.5f * this.getHeight())));
+            getPlayerNearMissBox().setY(Math.round(position.y - 64 + (0.5f * this.getHeight())));
         }
         // Make sure invulnerability can run out
         setInvulnerabilityTime(
-            Math.max(0f, getInvulnerabilityTime() - delta)
+            Math.max(0f, invulnerabilityTime - delta)
         );
 
+        // Near miss scoring
+        boolean nearbyGoose = false;
+        if (geese != null) {
+            for (int i = 0; i < geese.size; i++) {
+                Goose goose = geese.get(i);
+                if (getBounds().overlaps(goose.getBounds())) {
+                    nearbyGoose = true;
+                }
+                if (goose.isTouchingPlayer(this)) { gooseHit = true; }
+            }
+        }
+        nearMissTimer = Math.max(0, nearMissTimer - delta);
+        if (nearMissTimer == 0) {
+            GameScreen.points += nearMiss;
+            nearMiss = 0;
+            gooseHit = false;
+        }
+        if (nearbyGoose) {
+            nearMissTimer = 3;
+            nearMiss += 5;
+        }
+        if (gooseHit) { nearMiss = 0; }
     }
     /** for future invis cloak
     public boolean isInvisible() {
@@ -330,4 +370,5 @@ public class Player extends Entity {
                 return idleDown;
         }
     }
+
 }

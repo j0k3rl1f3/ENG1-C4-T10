@@ -36,6 +36,10 @@ public class Goose extends Entity{
         super(x, y, width, height);
     }
 
+    public boolean isTouchingPlayer(Player player) {
+        return getBounds().overlaps(player.getPlayerHitBox());
+    }
+
     /** Draws the appropriate idle, running, or attack animation frame. */
     @Override
     public void render(SpriteBatch batch) {
@@ -105,7 +109,8 @@ public class Goose extends Entity{
 
         movement.set(target).sub(position);
         float distance = movement.len();
-        boolean touchingPlayer = getBounds().overlaps(player.getPlayerHitBox());
+        boolean touchingPlayer = isTouchingPlayer(player);
+
         if (distance > 1f) {
             movement.scl(Math.min(SPEED * delta, distance) / distance);
             touchingPlayer |= moveAxis(movement.x, true, player, geese, mapFeatures, mapManager);
@@ -115,6 +120,7 @@ public class Goose extends Entity{
         if (distracted) {
             return;
         }
+
         attackTimer -= delta;
         if (attackTimer <= 0 && touchingPlayer) {
             attackTimer = ATTACK_COOLDOWN;
@@ -155,7 +161,7 @@ public class Goose extends Entity{
             getBounds().setY(position.y);
         }
 
-        boolean touchingPlayer = getBounds().overlaps(player.getPlayerHitBox());
+        boolean touchingPlayer = isTouchingPlayer(player);
         if (overlapsOtherGoose(geese) || overlapsSolidFeature(mapFeatures)
             || (mapManager != null && mapManager.checkGooseCollision(getBounds()))) {
             if (horizontal) {
